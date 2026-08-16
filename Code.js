@@ -68,12 +68,11 @@ function sanitizeCellText_(value) {
 
 var HEADER_ROW = [
   "เวลาบันทึก",
-  "รหัสนักศึกษา",
   "ชื่อ-นามสกุล",
-  "ฐาน1 (ซักประวัติ)",
-  "ฐาน2 (ตรวจร่างกาย)",
-  "ฐาน3 (หัตถการ)",
-  "ฐาน4 (สื่อสาร)",
+  "ฐาน1 (หัตถการ)",
+  "ฐาน2 (ข้อห้ามและข้อควรระวัง)",
+  "ฐาน3 (การให้คำแนะนำ)",
+  "ฐาน4 (การช่วยฟื้นคืนชีพ)",
   "คะแนนรวม (100)",
   "ผลการสอบ",
   "หมายเหตุ"
@@ -94,8 +93,9 @@ function getSheet_() {
   return sheet;
 }
 
-// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet (รวมชื่อ/รหัสนักศึกษา) — เป็น private helper เท่านั้น
+// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet (รวมชื่อนักศึกษา) — เป็น private helper เท่านั้น
 // ห้าม expose ตรง ๆ ผ่าน google.script.run เพราะมีข้อมูลระบุตัวตน ต้องผ่าน getFullRecords() ที่เช็ค PIN ก่อนเสมอ
+// โครงสร้างคอลัมน์: A=เวลาบันทึก, B=ชื่อ-นามสกุล, C-F=ฐาน1-4, G=คะแนนรวม, H=ผลการสอบ, I=หมายเหตุ
 function getAllRecords_() {
   var sheet = getSheet_();
   var lastRow = sheet.getLastRow();
@@ -106,20 +106,19 @@ function getAllRecords_() {
 
   for (var i = 0; i < values.length; i++) {
     var row = values[i];
-    if (!row[1] && !row[2]) continue; // ข้ามแถวว่าง
+    if (!row[1]) continue; // ข้ามแถวว่าง (ไม่มีชื่อ)
 
     records.push({
       id: i + 2, // เลขแถวจริงใน sheet ใช้อ้างอิงสำหรับลบ/แก้ไข
       timestamp: row[0] instanceof Date ? row[0].toLocaleString('th-TH') : row[0],
-      studentId: row[1],
-      studentName: row[2],
-      s1: Number(row[3]) || 0,
-      s2: Number(row[4]) || 0,
-      s3: Number(row[5]) || 0,
-      s4: Number(row[6]) || 0,
-      total: Number(row[7]) || 0,
-      passed: row[8] === "PASS",
-      note: row[9] || "",
+      studentName: String(row[1]),
+      s1: Number(row[2]) || 0,
+      s2: Number(row[3]) || 0,
+      s3: Number(row[4]) || 0,
+      s4: Number(row[5]) || 0,
+      total: Number(row[6]) || 0,
+      passed: row[7] === "PASS",
+      note: row[8] || "",
       synced: true
     });
   }
@@ -140,7 +139,7 @@ function getSummaryRecords() {
   });
 }
 
-// ข้อมูลเต็มพร้อมชื่อ/รหัสนักศึกษา — ต้องยืนยัน PIN ก่อนทุกครั้ง ใช้กับแท็บ "รายชื่อนักศึกษา & ผลสอบ"
+// ข้อมูลเต็มพร้อมชื่อนักศึกษา — ต้องยืนยัน PIN ก่อนทุกครั้ง ใช้กับแท็บ "รายชื่อนักศึกษา & ผลสอบ"
 function getFullRecords(pin) {
   requireAdminPin_(pin);
   return getAllRecords_();
@@ -156,8 +155,8 @@ function addRecord(data) {
   try {
     requireAdminPin_(data && data.pin);
 
-    if (!data || !data.studentId || !data.studentName) {
-      throw new Error('กรุณากรอกรหัสนักศึกษาและชื่อ-นามสกุลให้ครบถ้วน');
+    if (!data || !data.studentName) {
+      throw new Error('กรุณากรอกชื่อ-นามสกุลนักศึกษา');
     }
 
     var s1 = clampScore_(data.s1);
@@ -168,14 +167,12 @@ function addRecord(data) {
     var passed = total >= 60;
     var now = new Date();
 
-    var studentId = sanitizeCellText_(data.studentId);
     var studentName = sanitizeCellText_(data.studentName);
     var note = sanitizeCellText_(data.note || "");
 
     var sheet = getSheet_();
     sheet.appendRow([
       now,
-      studentId,
       studentName,
       s1, s2, s3, s4,
       total,
@@ -186,7 +183,6 @@ function addRecord(data) {
     return {
       id: sheet.getLastRow(),
       timestamp: now.toLocaleString('th-TH'),
-      studentId: data.studentId,
       studentName: data.studentName,
       s1: s1, s2: s2, s3: s3, s4: s4,
       total: total,

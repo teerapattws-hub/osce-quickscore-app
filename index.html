@@ -232,7 +232,7 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
-                            <h4 class="font-bold text-slate-800">ฐานที่ 1: การซักประวัติ (History Taking)</h4>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 1: หัตถการ (Procedural Skill)</h4>
                         </div>
                         <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
                     </div>
@@ -257,7 +257,7 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-xs">2</span>
-                            <h4 class="font-bold text-slate-800">ฐานที่ 2: การตรวจร่างกาย (Physical Exam)</h4>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 2: ข้อห้ามและข้อควรระวัง (Contraindications & Precautions)</h4>
                         </div>
                         <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
                     </div>
@@ -282,7 +282,7 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">3</span>
-                            <h4 class="font-bold text-slate-800">ฐานที่ 3: ทักษะหัตถการ (Procedural Skill)</h4>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 3: การให้คำแนะนำ (Patient Counseling)</h4>
                         </div>
                         <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
                     </div>
@@ -307,7 +307,7 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 font-bold flex items-center justify-center text-xs">4</span>
-                            <h4 class="font-bold text-slate-800">ฐานที่ 4: การสื่อสาร & แนะนำ (Communication)</h4>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 4: การช่วยฟื้นคืนชีพ (Resuscitation / CPR)</h4>
                         </div>
                         <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
                     </div>
@@ -339,7 +339,7 @@
                     <!-- Search Input -->
                     <div class="relative w-full sm:w-64">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
-                        <input type="text" id="search-box" oninput="renderTable()" placeholder="ค้นหารหัสนักศึกษา หรือ ชื่อ..." 
+                        <input type="text" id="search-box" oninput="renderTable()" placeholder="ค้นหาชื่อ..."
                             class="w-full pl-9 pr-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
                     </div>
 
@@ -365,7 +365,7 @@
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-100">
                             <tr>
-                                <th class="px-4 py-3 font-semibold">รหัสนักศึกษา / ชื่อ-นามสกุล</th>
+                                <th class="px-4 py-3 font-semibold">ชื่อ-นามสกุล</th>
                                 <th class="px-3 py-3 font-semibold text-center">ฐาน 1 (25)</th>
                                 <th class="px-3 py-3 font-semibold text-center">ฐาน 2 (25)</th>
                                 <th class="px-3 py-3 font-semibold text-center">ฐาน 3 (25)</th>
@@ -409,17 +409,10 @@
 
                 <form id="osce-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
                     <!-- Student Info Input -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">รหัสนักศึกษา *</label>
-                            <input type="text" id="input-student-id" required placeholder="เช่น 6501001" 
-                                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อ - นามสกุล *</label>
-                            <input type="text" id="input-student-name" required placeholder="เช่น นศพ. สมชาย ใจดี" 
-                                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
-                        </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อ - นามสกุล *</label>
+                        <input type="text" id="input-student-name" required placeholder="เช่น นศพ. สมชาย ใจดี"
+                            class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
                     </div>
 
                     <!-- 4 Station Scores Grid -->
@@ -431,22 +424,22 @@
 
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 1: ซักประวัติ</label>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 1: หัตถการ</label>
                                 <input type="number" step="0.5" min="0" max="25" id="input-s1" required placeholder="0-25" oninput="calculateTotal()"
                                     class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 2: ตรวจร่างกาย</label>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 2: ข้อห้ามและข้อควรระวัง</label>
                                 <input type="number" step="0.5" min="0" max="25" id="input-s2" required placeholder="0-25" oninput="calculateTotal()"
                                     class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 3: หัตถการ</label>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 3: การให้คำแนะนำ</label>
                                 <input type="number" step="0.5" min="0" max="25" id="input-s3" required placeholder="0-25" oninput="calculateTotal()"
                                     class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 4: การสื่อสาร</label>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 4: การช่วยฟื้นคืนชีพ</label>
                                 <input type="number" step="0.5" min="0" max="25" id="input-s4" required placeholder="0-25" oninput="calculateTotal()"
                                     class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
@@ -513,7 +506,7 @@
     <script>
         // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
         let scoreData = [];       // ข้อมูลสรุปแบบไม่ระบุตัวตน (เปิดดูได้ทุกคน) — ใช้กับ Overview/Stations
-        let fullScoreData = [];   // ข้อมูลเต็มพร้อมชื่อ/รหัสนักศึกษา — ต้องปลดล็อก PIN ก่อนถึงจะมีค่า
+        let fullScoreData = [];   // ข้อมูลเต็มพร้อมชื่อนักศึกษา — ต้องปลดล็อก PIN ก่อนถึงจะมีค่า
         let isAdminUnlocked = false;
         // PIN ไม่ถูกเก็บไว้ในไฟล์นี้เลย (เพื่อไม่ให้เห็นได้จาก view-source หรือ git) — ยืนยันผ่าน getFullRecords() บนเซิร์ฟเวอร์เท่านั้น
         let verifiedPin = ''; // เก็บ PIN ที่เซิร์ฟเวอร์ยืนยันแล้ว ไว้แนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบ/ดูรายชื่อ
@@ -532,7 +525,7 @@
         };
 
         // ลำดับช่องกรอกในฟอร์มบันทึกคะแนน — ใช้กำหนดว่า Enter จะพาไปช่องไหนต่อ
-        const ENTRY_FIELD_ORDER = ['input-student-id', 'input-student-name', 'input-s1', 'input-s2', 'input-s3', 'input-s4', 'input-note'];
+        const ENTRY_FIELD_ORDER = ['input-student-name', 'input-s1', 'input-s2', 'input-s3', 'input-s4', 'input-note'];
 
         function setupKeyboardShortcuts() {
             // กด Enter ในฟอร์มบันทึกคะแนน = เลื่อนไปช่องถัดไปเหมือนกด Tab (เร็วกว่าเอื้อมไปกดเมาส์/ปุ่ม Tab)
@@ -561,7 +554,7 @@
             });
         }
 
-        // ดึงข้อมูลสรุป (ไม่มีชื่อ/รหัสนักศึกษา) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
+        // ดึงข้อมูลสรุป (ไม่มีชื่อนักศึกษา) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
         function loadRecordsFromSheet() {
             google.script.run
                 .withSuccessHandler(function(records) {
@@ -574,7 +567,7 @@
                 .getSummaryRecords();
         }
 
-        // ดึงข้อมูลเต็ม (มีชื่อ/รหัสนักศึกษา) — ต้องแนบ PIN ที่ยืนยันแล้วเสมอ
+        // ดึงข้อมูลเต็ม (มีชื่อนักศึกษา) — ต้องแนบ PIN ที่ยืนยันแล้วเสมอ
         function loadFullRecords(onDone) {
             google.script.run
                 .withSuccessHandler(function(records) {
@@ -716,7 +709,7 @@
             stationsBarChart = new Chart(ctxBar, {
                 type: 'bar',
                 data: {
-                    labels: ['ฐาน 1: ซักประวัติ', 'ฐาน 2: ตรวจร่างกาย', 'ฐาน 3: หัตถการ', 'ฐาน 4: การสื่อสาร'],
+                    labels: ['ฐาน 1: หัตถการ', 'ฐาน 2: ข้อห้ามและข้อควรระวัง', 'ฐาน 3: การให้คำแนะนำ', 'ฐาน 4: การช่วยฟื้นคืนชีพ'],
                     datasets: [{
                         label: 'คะแนนเฉลี่ย (เต็ม 25)',
                         data: [0, 0, 0, 0],
@@ -828,7 +821,6 @@
         function handleFormSubmit(e) {
             e.preventDefault();
 
-            const studentId = document.getElementById('input-student-id').value.trim();
             const studentName = document.getElementById('input-student-name').value.trim();
             const s1 = parseFloat(document.getElementById('input-s1').value) || 0;
             const s2 = parseFloat(document.getElementById('input-s2').value) || 0;
@@ -836,7 +828,7 @@
             const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
             const note = document.getElementById('input-note').value.trim();
 
-            const payload = { studentId, studentName, s1, s2, s3, s4, note, pin: verifiedPin };
+            const payload = { studentName, s1, s2, s3, s4, note, pin: verifiedPin };
 
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
@@ -850,7 +842,7 @@
                     resetSubmitButton();
                     clearEntryForm();
                     showToast(`บันทึกคะแนนของ ${record.studentName} สำเร็จ!`);
-                    document.getElementById('input-student-id').focus();
+                    document.getElementById('input-student-name').focus();
                 })
                 .withFailureHandler(function(error) {
                     resetSubmitButton();
@@ -859,7 +851,7 @@
                 .addRecord(payload);
         }
 
-        // ตัดข้อมูลระบุตัวตน (ชื่อ/รหัสนักศึกษา/หมายเหตุ) ออก ก่อนเก็บลง scoreData ที่เป็นข้อมูลสาธารณะ
+        // ตัดข้อมูลระบุตัวตน (ชื่อ/หมายเหตุ) ออก ก่อนเก็บลง scoreData ที่เป็นข้อมูลสาธารณะ
         function toSummary(record) {
             return {
                 id: record.id,
@@ -877,7 +869,6 @@
         }
 
         function clearEntryForm() {
-            document.getElementById('input-student-id').value = '';
             document.getElementById('input-student-name').value = '';
             document.getElementById('input-s1').value = '';
             document.getElementById('input-s2').value = '';
@@ -889,7 +880,7 @@
             document.getElementById('preview-status').className = 'text-xs font-bold text-slate-400';
         }
 
-        // ป้องกัน Stored XSS — escape ค่าที่มาจากผู้ใช้ (studentId/studentName/note) ก่อนใส่ใน innerHTML
+        // ป้องกัน Stored XSS — escape ค่าที่มาจากผู้ใช้ (studentName/note) ก่อนใส่ใน innerHTML
         function escapeHtml(value) {
             const div = document.createElement('div');
             div.textContent = value == null ? '' : String(value);
@@ -905,7 +896,7 @@
             tbody.innerHTML = '';
 
             const filtered = fullScoreData.filter(item => {
-                const matchSearch = item.studentId.toLowerCase().includes(search) || item.studentName.toLowerCase().includes(search);
+                const matchSearch = String(item.studentName).toLowerCase().includes(search);
                 const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
                 return matchSearch && matchFilter;
             });
@@ -927,7 +918,6 @@
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-mono font-bold text-slate-800">${escapeHtml(item.studentId)}</div>
                         <div class="font-medium text-slate-700">${escapeHtml(item.studentName)}</div>
                         ${item.note ? `<div class="text-xs text-slate-400 italic">${escapeHtml(item.note)}</div>` : ''}
                     </td>
@@ -1006,10 +996,9 @@
                 return;
             }
 
-            let csv = "\uFEFFรหัสนักศึกษา,ชื่อ-นามสกุล,ฐาน1_ซักประวัติ,ฐาน2_ตรวจร่างกาย,ฐาน3_หัตถการ,ฐาน4_สื่อสาร,คะแนนรวม,ผลการสอบ,หมายเหตุ,เวลาที่บันทึก\n";
+            let csv = "﻿ชื่อ-นามสกุล,ฐาน1_หัตถการ,ฐาน2_ข้อห้ามและข้อควรระวัง,ฐาน3_การให้คำแนะนำ,ฐาน4_การช่วยฟื้นคืนชีพ,คะแนนรวม,ผลการสอบ,หมายเหตุ,เวลาที่บันทึก\n";
             fullScoreData.forEach(i => {
                 csv += [
-                    csvField(i.studentId),
                     csvField(i.studentName),
                     csvField(i.s1),
                     csvField(i.s2),
