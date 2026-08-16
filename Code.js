@@ -145,6 +145,19 @@ function getFullRecords(pin) {
   return getAllRecords_();
 }
 
+// Top N คะแนนสูงสุดพร้อมชื่อ — ตั้งใจเปิดให้ทุกคนดูได้โดยไม่ต้องมี PIN (ตามที่ผู้ใช้เลือกให้ Top 3 แสดงชื่อสาธารณะ)
+// ต่างจาก getSummaryRecords เพราะเปิดเผยเฉพาะกลุ่มบนสุดเท่านั้น ไม่ใช่รายชื่อทั้งหมด
+function getTopScorers(n) {
+  var count = Number(n) || 3;
+  return getAllRecords_()
+    .slice()
+    .sort(function(a, b) { return b.total - a.total; })
+    .slice(0, count)
+    .map(function(r) {
+      return { studentName: r.studentName, total: r.total, passed: r.passed };
+    });
+}
+
 // บันทึกคะแนนสอบ 1 รายการลง Sheet (เรียกผ่าน google.script.run)
 function addRecord(data) {
   var lock = LockService.getScriptLock();

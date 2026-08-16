@@ -221,6 +221,18 @@
                     <canvas id="chart-distribution"></canvas>
                 </div>
             </div>
+
+            <!-- Top 3 Highest Scorers -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center space-x-2">
+                    <i class="fa-solid fa-trophy text-amber-500"></i>
+                    <span>Top 3 คะแนนสูงสุด</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">3 อันดับผู้เข้าสอบที่ได้คะแนนรวมสูงสุด</p>
+                <div class="h-48 relative">
+                    <canvas id="chart-top3"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- TAB 2: STATIONS ANALYSIS -->
@@ -516,13 +528,36 @@
         let stationsBarChart = null;
         let passDonutChart = null;
         let distributionChart = null;
+        let topScorersChart = null;
 
         // On Page Initialization
         window.onload = function() {
             initCharts();
             loadRecordsFromSheet();
+            loadTopScorers();
             setupKeyboardShortcuts();
         };
+
+        // Top 3 คะแนนสูงสุดพร้อมชื่อ — endpoint นี้ตั้งใจเปิดให้ทุกคนดูชื่อได้ (ตามที่ผู้ใช้ยืนยัน)
+        // ต่างจาก getSummaryRecords ที่ไม่มีชื่อ เพราะจำกัดเฉพาะ 3 อันดับแรกเท่านั้น ไม่ใช่รายชื่อทั้งหมด
+        function loadTopScorers() {
+            google.script.run
+                .withSuccessHandler(function(top) {
+                    renderTopScorers(top || []);
+                })
+                .withFailureHandler(function(error) {
+                    console.error('โหลด Top 3 ไม่สำเร็จ:', error);
+                })
+                .getTopScorers(3);
+        }
+
+        function renderTopScorers(top) {
+            if (!topScorersChart) return;
+            const medals = ['🥇', '🥈', '🥉'];
+            topScorersChart.data.labels = top.map((r, i) => `${medals[i] || ''} ${r.studentName}`);
+            topScorersChart.data.datasets[0].data = top.map(r => r.total);
+            topScorersChart.update();
+        }
 
         // ลำดับช่องกรอกในฟอร์มบันทึกคะแนน — ใช้กำหนดว่า Enter จะพาไปช่องไหนต่อ
         const ENTRY_FIELD_ORDER = ['input-student-name', 'input-s1', 'input-s2', 'input-s3', 'input-s4', 'input-note'];
@@ -762,6 +797,28 @@
                     scales: { y: { ticks: { stepSize: 1 } } }
                 }
             });
+
+            // Top 3 Highest Scorers Chart
+            const ctxTop3 = document.getElementById('chart-top3').getContext('2d');
+            topScorersChart = new Chart(ctxTop3, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'คะแนนรวม',
+                        data: [],
+                        backgroundColor: ['#f59e0b', '#94a3b8', '#b45309'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { min: 0, max: 100 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
         }
 
         function updateCharts() {
@@ -839,6 +896,7 @@
                     fullScoreData.unshift(record);
                     scoreData.unshift(toSummary(record));
                     updateAllViews();
+                    loadTopScorers();
                     resetSubmitButton();
                     clearEntryForm();
                     showToast(`บันทึกคะแนนของ ${record.studentName} สำเร็จ!`);
@@ -948,6 +1006,7 @@
                     showToast('ลบรายการคะแนนสำเร็จ');
                     loadRecordsFromSheet();
                     loadFullRecords();
+                    loadTopScorers();
                 })
                 .withFailureHandler(function(error) {
                     showToast('ลบไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
@@ -968,6 +1027,7 @@
                 .withSuccessHandler(function(records) {
                     scoreData = records || [];
                     updateAllViews();
+                    loadTopScorers();
                     if (isAdminUnlocked) {
                         loadFullRecords(stopSpin);
                     } else {
