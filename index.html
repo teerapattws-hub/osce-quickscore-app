@@ -76,10 +76,6 @@
                     <i class="fa-solid fa-lock"></i>
                     <span id="admin-btn-label">โหมดกรรมการบันทึกคะแนน</span>
                 </button>
-
-                <button onclick="toggleConfigModal()" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium backdrop-blur-sm transition text-slate-200">
-                    <i class="fa-solid fa-gear"></i>
-                </button>
             </div>
         </div>
     </header>
@@ -359,10 +355,6 @@
                         <i class="fa-solid fa-file-csv text-emerald-600"></i>
                         <span>ดาวน์โหลด CSV</span>
                     </button>
-                    <button onclick="syncAllToSheets()" id="btn-sync-all" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium shadow-sm transition flex items-center space-x-1.5">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <span>ส่ง Google Sheets</span>
-                    </button>
                 </div>
             </div>
 
@@ -511,74 +503,6 @@
         </div>
     </div>
 
-    <!-- Google Sheets Setup Modal -->
-    <div id="config-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
-                    <i class="fa-solid fa-sheet-plastic text-emerald-600"></i>
-                    <span>ตั้งค่าเชื่อมต่อ Google Sheets</span>
-                </h3>
-                <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <div class="space-y-3 text-xs text-slate-600">
-                <div>
-                    <label class="block font-medium text-slate-700 mb-1">Google Apps Script Web App URL</label>
-                    <input type="url" id="sheet-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
-                        class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="font-medium text-slate-700">โค้ด Google Apps Script (รองรับ 4 ฐานสอบ)</label>
-                        <button onclick="copyScriptCode()" class="text-brand-600 font-semibold hover:underline flex items-center space-x-1">
-                            <i class="fa-solid fa-copy"></i>
-                            <span>คัดลอกโค้ด</span>
-                        </button>
-                    </div>
-                    <pre class="bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px] overflow-x-auto max-h-40" id="script-code">
-function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
-  
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      "เวลาบันทึก", "รหัสนักศึกษา", "ชื่อ-นามสกุล", 
-      "ฐาน1 (ซักประวัติ)", "ฐาน2 (ตรวจร่างกาย)", 
-      "ฐาน3 (หัตถการ)", "ฐาน4 (สื่อสาร)", 
-      "คะแนนรวม (100)", "ผลการสอบ", "หมายเหตุ"
-    ]);
-  }
-  
-  sheet.appendRow([
-    new Date(),
-    data.studentId,
-    data.studentName,
-    data.s1,
-    data.s2,
-    data.s3,
-    data.s4,
-    data.total,
-    data.passed ? "PASS" : "FAIL",
-    data.note || ""
-  ]);
-  
-  return ContentService.createTextOutput(JSON.stringify({ "result": "success" }))
-    .setMimeType(ContentService.MimeType.JSON);
-}</pre>
-                </div>
-            </div>
-
-            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
-                <button onclick="toggleConfigModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl">ปิด</button>
-                <button onclick="saveSheetConfig()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md">บันทึก URL</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Message Alert Toast -->
     <div id="toast-msg" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-medium transform transition-all translate-y-20 opacity-0 z-50 flex items-center space-x-2">
         <i class="fa-solid fa-circle-info text-brand-400" id="toast-icon"></i>
@@ -586,15 +510,8 @@ function doPost(e) {
     </div>
 
     <script>
-        // Application State Variables
-        let scoreData = JSON.parse(localStorage.getItem('osce_score_data')) || [
-            // Sample Mock Data for Instant Preview
-            { id: 1, studentId: '6501001', studentName: 'นศพ. ณัฐวุฒิ ใจดี', s1: 22, s2: 21, s3: 19, s4: 23, total: 85, passed: true, note: 'ทำได้ดีเยี่ยม', synced: true, timestamp: '16/08/2026 14:20' },
-            { id: 2, studentId: '6501002', studentName: 'นศพ. ปิยะดา วงศ์สว่าง', s1: 18, s2: 17, s3: 15, s4: 20, total: 70, passed: true, note: '', synced: true, timestamp: '16/08/2026 14:25' },
-            { id: 3, studentId: '6501003', studentName: 'นศพ. ธนกฤต มั่นคง', s1: 12, s2: 14, s3: 11, s4: 15, total: 52, passed: false, note: 'ต้องปรับปรุงหัตถการ', synced: true, timestamp: '16/08/2026 14:30' },
-            { id: 4, studentId: '6501004', studentName: 'นศพ. ชนิกานต์ สุขเสริฐ', s1: 24, s2: 23, s3: 22, s4: 24, total: 93, passed: true, note: 'ทักษะโดดเด่น', synced: true, timestamp: '16/08/2026 14:35' },
-        ];
-        let sheetAppUrl = localStorage.getItem('osce_sheet_url') || '';
+        // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
+        let scoreData = [];
         let isAdminUnlocked = false;
         const ADMIN_PIN = '1234'; // Default PIN Code for Admin Entry
 
@@ -605,10 +522,22 @@ function doPost(e) {
 
         // On Page Initialization
         window.onload = function() {
-            document.getElementById('sheet-url-input').value = sheetAppUrl;
             initCharts();
-            updateAllViews();
+            loadRecordsFromSheet();
         };
+
+        // ดึงข้อมูลคะแนนทั้งหมดจาก Google Sheet ผ่าน google.script.run (ใช้ได้เมื่อเปิดผ่าน Web App URL ของ Apps Script เท่านั้น)
+        function loadRecordsFromSheet() {
+            google.script.run
+                .withSuccessHandler(function(records) {
+                    scoreData = records || [];
+                    updateAllViews();
+                })
+                .withFailureHandler(function(error) {
+                    showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                })
+                .getAllRecords();
+        }
 
         // Navigation Tab Switching
         function switchTab(tabName) {
@@ -835,22 +764,37 @@ function doPost(e) {
             const s2 = parseFloat(document.getElementById('input-s2').value) || 0;
             const s3 = parseFloat(document.getElementById('input-s3').value) || 0;
             const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
-            const total = s1 + s2 + s3 + s4;
-            const passed = total >= 60;
             const note = document.getElementById('input-note').value.trim();
 
-            const newItem = {
-                id: Date.now(),
-                studentId, studentName, s1, s2, s3, s4, total, passed, note,
-                synced: false,
-                timestamp: new Date().toLocaleString('th-TH')
-            };
+            const payload = { studentId, studentName, s1, s2, s3, s4, note };
 
-            scoreData.unshift(newItem);
-            saveData();
-            updateAllViews();
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังบันทึกลง Google Sheet...</span>`;
 
-            // Clear inputs
+            google.script.run
+                .withSuccessHandler(function(record) {
+                    scoreData.unshift(record);
+                    updateAllViews();
+                    resetSubmitButton();
+                    clearEntryForm();
+                    showToast(`บันทึกคะแนนของ ${record.studentName} สำเร็จ!`);
+                    document.getElementById('input-student-id').focus();
+                })
+                .withFailureHandler(function(error) {
+                    resetSubmitButton();
+                    showToast('บันทึกไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                })
+                .addRecord(payload);
+        }
+
+        function resetSubmitButton() {
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> <span>บันทึกข้อมูลการสอบ</span>`;
+        }
+
+        function clearEntryForm() {
             document.getElementById('input-student-id').value = '';
             document.getElementById('input-student-name').value = '';
             document.getElementById('input-s1').value = '';
@@ -861,13 +805,6 @@ function doPost(e) {
             document.getElementById('preview-total').textContent = '0';
             document.getElementById('preview-status').textContent = 'ยังไม่ครบ';
             document.getElementById('preview-status').className = 'text-xs font-bold text-slate-400';
-
-            showToast(`บันทึกคะแนนของ ${studentName} สำเร็จ!`);
-            document.getElementById('input-student-id').focus();
-
-            if (sheetAppUrl) {
-                syncSingleRecord(newItem.id);
-            }
         }
 
         function renderTable() {
@@ -899,13 +836,9 @@ function doPost(e) {
                     ? `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800">PASS</span>`
                     : `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800">FAIL</span>`;
 
-                const syncIcon = item.synced 
-                    ? `<i class="fa-solid fa-cloud-check text-emerald-500 ml-1" title="ส่งเข้า Sheet เรียบร้อย"></i>`
-                    : `<i class="fa-solid fa-cloud-arrow-up text-amber-500 ml-1 cursor-pointer" onclick="syncSingleRecord(${item.id})" title="กดเพื่อส่งเข้า Sheet"></i>`;
-
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-mono font-bold text-slate-800">${item.studentId} ${syncIcon}</div>
+                        <div class="font-mono font-bold text-slate-800">${item.studentId}</div>
                         <div class="font-medium text-slate-700">${item.studentName}</div>
                         ${item.note ? `<div class="text-xs text-slate-400 italic">${item.note}</div>` : ''}
                     </td>
@@ -929,94 +862,34 @@ function doPost(e) {
 
         function deleteRecord(id) {
             if (!isAdminUnlocked) return;
-            scoreData = scoreData.filter(i => i.id !== id);
-            saveData();
-            updateAllViews();
-            showToast('ลบรายการคะแนนสำเร็จ');
-        }
+            if (!confirm('ยืนยันการลบรายการนี้ออกจาก Google Sheet ถาวร?')) return;
 
-        function saveData() {
-            localStorage.setItem('osce_score_data', JSON.stringify(scoreData));
-        }
-
-        async function syncSingleRecord(id) {
-            if (!sheetAppUrl) return;
-
-            const item = scoreData.find(i => i.id === id);
-            if (!item) return;
-
-            try {
-                await fetch(sheetAppUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(item)
-                });
-                item.synced = true;
-                saveData();
-                renderTable();
-            } catch (err) {
-                console.error('Sheet Sync Error:', err);
-            }
-        }
-
-        async function syncAllToSheets() {
-            if (!sheetAppUrl) {
-                toggleConfigModal();
-                showToast('กรุณากรอก Google Sheet Web App URL ก่อนครับ', 'error');
-                return;
-            }
-
-            const unsynced = scoreData.filter(i => !i.synced);
-            if (unsynced.length === 0) {
-                showToast('ข้อมูลทั้งหมดถูกส่งไป Google Sheets แล้ว');
-                return;
-            }
-
-            const btn = document.getElementById('btn-sync-all');
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังส่ง...</span>`;
-
-            for (let item of unsynced) {
-                await syncSingleRecord(item.id);
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> <span>ส่ง Google Sheets</span>`;
-            showToast('ส่งข้อมูลทั้งหมดไปยัง Google Sheets สำเร็จ!');
+            google.script.run
+                .withSuccessHandler(function() {
+                    showToast('ลบรายการคะแนนสำเร็จ');
+                    loadRecordsFromSheet();
+                })
+                .withFailureHandler(function(error) {
+                    showToast('ลบไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                })
+                .deleteRecordByRow(id);
         }
 
         function refreshData() {
             const icon = document.getElementById('refresh-icon');
             icon.classList.add('fa-spin');
-            setTimeout(() => {
-                updateAllViews();
-                icon.classList.remove('fa-spin');
-                showToast('รีเฟรชข้อมูลเรียบร้อย');
-            }, 500);
-        }
-
-        function toggleConfigModal() {
-            document.getElementById('config-modal').classList.toggle('hidden');
-        }
-
-        function saveSheetConfig() {
-            const url = document.getElementById('sheet-url-input').value.trim();
-            sheetAppUrl = url;
-            localStorage.setItem('osce_sheet_url', url);
-            toggleConfigModal();
-            showToast('บันทึกการตั้งค่า Google Sheets สำเร็จ');
-        }
-
-        function copyScriptCode() {
-            const code = document.getElementById('script-code').innerText;
-            const textarea = document.createElement('textarea');
-            textarea.value = code;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast('คัดลอกโค้ด Apps Script สำเร็จ!');
+            google.script.run
+                .withSuccessHandler(function(records) {
+                    scoreData = records || [];
+                    updateAllViews();
+                    icon.classList.remove('fa-spin');
+                    showToast('รีเฟรชข้อมูลเรียบร้อย');
+                })
+                .withFailureHandler(function(error) {
+                    icon.classList.remove('fa-spin');
+                    showToast('รีเฟรชข้อมูลไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                })
+                .getAllRecords();
         }
 
         function exportToCSV() {

@@ -7,54 +7,134 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// ฟังก์ชันสำหรับรับข้อมูลการบันทึกคะแนนจากหน้าเว็บลง Google Sheet
-function doPost(e) {
+var HEADER_ROW = [
+  "เวลาบันทึก",
+  "รหัสนักศึกษา",
+  "ชื่อ-นามสกุล",
+  "ฐาน1 (ซักประวัติ)",
+  "ฐาน2 (ตรวจร่างกาย)",
+  "ฐาน3 (หัตถการ)",
+  "ฐาน4 (สื่อสาร)",
+  "คะแนนรวม (100)",
+  "ผลการสอบ",
+  "หมายเหตุ"
+];
+
+// คืน sheet ปัจจุบัน พร้อมสร้าง Header อัตโนมัติหากยังไม่มี
+function getSheet_() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(HEADER_ROW);
+    sheet.getRange(1, 1, 1, HEADER_ROW.length).setFontWeight("bold").setBackground("#0284c7").setFontColor("#ffffff");
+  }
+  return sheet;
+}
+
+// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet เพื่อแสดงในแดชบอร์ด (เรียกผ่าน google.script.run)
+function getAllRecords() {
+  var sheet = getSheet_();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  var values = sheet.getRange(2, 1, lastRow - 1, HEADER_ROW.length).getValues();
+  var records = [];
+
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    if (!row[1] && !row[2]) continue; // ข้ามแถวว่าง
+
+    records.push({
+      id: i + 2, // เลขแถวจริงใน sheet ใช้อ้างอิงสำหรับลบ/แก้ไข
+      timestamp: row[0] instanceof Date ? row[0].toLocaleString('th-TH') : row[0],
+      studentId: row[1],
+      studentName: row[2],
+      s1: Number(row[3]) || 0,
+      s2: Number(row[4]) || 0,
+      s3: Number(row[5]) || 0,
+      s4: Number(row[6]) || 0,
+      total: Number(row[7]) || 0,
+      passed: row[8] === "PASS",
+      note: row[9] || "",
+      synced: true
+    });
+  }
+
+  return records.reverse(); // แสดงรายการล่าสุดขึ้นก่อน
+}
+
+// บันทึกคะแนนสอบ 1 รายการลง Sheet (เรียกผ่าน google.script.run)
+function addRecord(data) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000); // ป้องกันปัญหากรรมการบันทึกพร้อมกันในวินาทีเดียวกัน
-  
+  lock.tryLock(10000);
+
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = JSON.parse(e.postData.contents);
-    
-    // สร้าง Header อัตโนมัติหากเป็นบรรทัดแรก
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow([
-        "เวลาบันทึก", 
-        "รหัสนักศึกษา", 
-        "ชื่อ-นามสกุล", 
-        "ฐาน1 (ซักประวัติ)", 
-        "ฐาน2 (ตรวจร่างกาย)", 
-        "ฐาน3 (หัตถการ)", 
-        "ฐาน4 (สื่อสาร)", 
-        "คะแนนรวม (100)", 
-        "ผลการสอบ", 
-        "หมายเหตุ"
-      ]);
-      // จัดรูปแบบ Header ให้สวยงาม
-      sheet.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#0284c7").setFontColor("#ffffff");
+    if (!data || !data.studentId || !data.studentName) {
+      throw new Error('กรุณากรอกรหัสนักศึกษาและชื่อ-นามสกุลให้ครบถ้วน');
     }
-    
-    // บันทึกข้อมูลแถวใหม่
+
+    var s1 = Number(data.s1) || 0;
+    var s2 = Number(data.s2) || 0;
+    var s3 = Number(data.s3) || 0;
+    var s4 = Number(data.s4) || 0;
+    var total = s1 + s2 + s3 + s4;
+    var passed = total >= 60;
+    var now = new Date();
+
+    var sheet = getSheet_();
     sheet.appendRow([
-      new Date(),
+      now,
       data.studentId,
       data.studentName,
-      Number(data.s1),
-      Number(data.s2),
-      Number(data.s3),
-      Number(data.s4),
-      Number(data.total),
-      data.passed ? "PASS" : "FAIL",
+      s1, s2, s3, s4,
+      total,
+      passed ? "PASS" : "FAIL",
       data.note || ""
     ]);
-    
-    return ContentService.createTextOutput(JSON.stringify({ "status": "success", "message": "บันทึกเรียบร้อย" }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+
+    return {
+      id: sheet.getLastRow(),
+      timestamp: now.toLocaleString('th-TH'),
+      studentId: data.studentId,
+      studentName: data.studentName,
+      s1: s1, s2: s2, s3: s3, s4: s4,
+      total: total,
+      passed: passed,
+      note: data.note || "",
+      synced: true
+    };
   } finally {
     lock.releaseLock();
+  }
+}
+
+// ลบข้อมูล 1 แถวออกจาก Sheet ตามเลขแถว (id ที่ได้จาก getAllRecords)
+function deleteRecordByRow(rowId) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var sheet = getSheet_();
+    var row = Number(rowId);
+    if (!row || row < 2 || row > sheet.getLastRow()) {
+      throw new Error('ไม่พบรายการที่ต้องการลบ (ข้อมูลอาจถูกแก้ไขไปแล้ว กรุณารีเฟรช)');
+    }
+    sheet.deleteRow(row);
+    return { status: 'success' };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// รับข้อมูลผ่าน HTTP POST (สำหรับเรียกจากภายนอก Apps Script เช่น curl/Postman)
+// การบันทึกจากตัวหน้าเว็บเองใช้ addRecord() ผ่าน google.script.run เป็นหลัก เพราะรู้ผลสำเร็จ/ล้มเหลวจริง
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var record = addRecord(data);
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", record: record }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
