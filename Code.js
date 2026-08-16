@@ -75,8 +75,13 @@ var HEADER_ROW = [
 ];
 
 // คืน sheet ปัจจุบัน พร้อมสร้าง Header อัตโนมัติหากยังไม่มี
+// ระบุ Spreadsheet ตรง ๆ ด้วย ID แทนการพึ่ง SpreadsheetApp.getActiveSpreadsheet()
+// เพราะเมื่อรันเป็น Web App (ไม่ได้เปิดจากหน้า Sheet) จะไม่มี "active spreadsheet" ให้อ้างอิง
+// ID นี้เอามาจาก URL ของชีท: https://docs.google.com/spreadsheets/d/<ID>/edit
+var SPREADSHEET_ID = '1iDBcZBrZCw3eUk4Lg35TUdo780zzWhVbhK5cPqKJBqI';
+
 function getSheet_() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheets()[0];
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADER_ROW);
     sheet.getRange(1, 1, 1, HEADER_ROW.length).setFontWeight("bold").setBackground("#0284c7").setFontColor("#ffffff");
