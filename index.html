@@ -528,7 +528,38 @@
         window.onload = function() {
             initCharts();
             loadRecordsFromSheet();
+            setupKeyboardShortcuts();
         };
+
+        // ลำดับช่องกรอกในฟอร์มบันทึกคะแนน — ใช้กำหนดว่า Enter จะพาไปช่องไหนต่อ
+        const ENTRY_FIELD_ORDER = ['input-student-id', 'input-student-name', 'input-s1', 'input-s2', 'input-s3', 'input-s4', 'input-note'];
+
+        function setupKeyboardShortcuts() {
+            // กด Enter ในฟอร์มบันทึกคะแนน = เลื่อนไปช่องถัดไปเหมือนกด Tab (เร็วกว่าเอื้อมไปกดเมาส์/ปุ่ม Tab)
+            // ค่า default ของ browser คือกด Enter แล้ว submit ฟอร์มทันที ต้อง preventDefault ก่อนเสมอ
+            document.getElementById('osce-form').addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+                e.preventDefault();
+
+                const currentIndex = ENTRY_FIELD_ORDER.indexOf(e.target.id);
+                if (currentIndex === -1) return;
+
+                const nextField = document.getElementById(ENTRY_FIELD_ORDER[currentIndex + 1] || '');
+                if (nextField) {
+                    nextField.focus();
+                    nextField.select();
+                } else {
+                    document.getElementById('osce-form').requestSubmit();
+                }
+            });
+
+            // กด Enter ในช่อง PIN = ยืนยัน PIN ทันที ไม่ต้องใช้เมาส์กดปุ่ม
+            document.getElementById('input-pin').addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                verifyPin();
+            });
+        }
 
         // ดึงข้อมูลสรุป (ไม่มีชื่อ/รหัสนักศึกษา) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
         function loadRecordsFromSheet() {
