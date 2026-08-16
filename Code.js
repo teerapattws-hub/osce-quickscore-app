@@ -7,6 +7,21 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// PIN สำหรับยืนยันสิทธิ์กรรมการฝั่งเซิร์ฟเวอร์ — ต้องตรงกับ ADMIN_PIN ใน index.html
+// เปลี่ยนรหัสนี้ก่อนใช้งานจริงทุกครั้ง (ห้ามใช้ 1234 ค่าเริ่มต้น)
+var ADMIN_PIN = '1234';
+
+function requireAdminPin_(pin) {
+  if (pin !== ADMIN_PIN) {
+    throw new Error('รหัส PIN ไม่ถูกต้อง หรือหมดสิทธิ์เข้าถึง');
+  }
+}
+
+function clampScore_(value) {
+  var n = Number(value) || 0;
+  return Math.max(0, Math.min(25, n));
+}
+
 var HEADER_ROW = [
   "เวลาบันทึก",
   "รหัสนักศึกษา",
@@ -68,14 +83,16 @@ function addRecord(data) {
   lock.tryLock(10000);
 
   try {
+    requireAdminPin_(data && data.pin);
+
     if (!data || !data.studentId || !data.studentName) {
       throw new Error('กรุณากรอกรหัสนักศึกษาและชื่อ-นามสกุลให้ครบถ้วน');
     }
 
-    var s1 = Number(data.s1) || 0;
-    var s2 = Number(data.s2) || 0;
-    var s3 = Number(data.s3) || 0;
-    var s4 = Number(data.s4) || 0;
+    var s1 = clampScore_(data.s1);
+    var s2 = clampScore_(data.s2);
+    var s3 = clampScore_(data.s3);
+    var s4 = clampScore_(data.s4);
     var total = s1 + s2 + s3 + s4;
     var passed = total >= 60;
     var now = new Date();
@@ -108,11 +125,13 @@ function addRecord(data) {
 }
 
 // ลบข้อมูล 1 แถวออกจาก Sheet ตามเลขแถว (id ที่ได้จาก getAllRecords)
-function deleteRecordByRow(rowId) {
+function deleteRecordByRow(rowId, pin) {
   var lock = LockService.getScriptLock();
   lock.tryLock(10000);
 
   try {
+    requireAdminPin_(pin);
+
     var sheet = getSheet_();
     var row = Number(rowId);
     if (!row || row < 2 || row > sheet.getLastRow()) {

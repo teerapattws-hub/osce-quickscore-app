@@ -513,7 +513,8 @@
         // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
         let scoreData = [];
         let isAdminUnlocked = false;
-        const ADMIN_PIN = '1234'; // Default PIN Code for Admin Entry
+        let verifiedPin = ''; // PIN ที่ยืนยันแล้ว ส่งแนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบข้อมูล
+        const ADMIN_PIN = '1234'; // Default PIN Code for Admin Entry — ต้องตรงกับ ADMIN_PIN ใน Code.js
 
         // Chart Instance Variables
         let stationsBarChart = null;
@@ -562,6 +563,7 @@
             if (isAdminUnlocked) {
                 // Lock back to viewer mode
                 isAdminUnlocked = false;
+                verifiedPin = '';
                 document.getElementById('admin-btn-label').textContent = 'โหมดกรรมการบันทึกคะแนน';
                 document.getElementById('lock-badge').classList.remove('hidden');
                 switchTab('overview');
@@ -581,6 +583,7 @@
             const inputPin = document.getElementById('input-pin').value.trim();
             if (inputPin === ADMIN_PIN) {
                 isAdminUnlocked = true;
+                verifiedPin = inputPin;
                 closeAdminModal();
                 document.getElementById('admin-btn-label').textContent = 'ออกจากโหมดบันทึกคะแนน';
                 document.getElementById('lock-badge').classList.add('hidden');
@@ -766,7 +769,7 @@
             const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
             const note = document.getElementById('input-note').value.trim();
 
-            const payload = { studentId, studentName, s1, s2, s3, s4, note };
+            const payload = { studentId, studentName, s1, s2, s3, s4, note, pin: verifiedPin };
 
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
@@ -807,6 +810,13 @@
             document.getElementById('preview-status').className = 'text-xs font-bold text-slate-400';
         }
 
+        // ป้องกัน Stored XSS — escape ค่าที่มาจากผู้ใช้ (studentId/studentName/note) ก่อนใส่ใน innerHTML
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value == null ? '' : String(value);
+            return div.innerHTML;
+        }
+
         function renderTable() {
             const tbody = document.getElementById('score-table-body');
             const emptyState = document.getElementById('empty-state');
@@ -832,15 +842,15 @@
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
-                const statusBadge = item.passed 
+                const statusBadge = item.passed
                     ? `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800">PASS</span>`
                     : `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800">FAIL</span>`;
 
                 tr.innerHTML = `
                     <td class="px-4 py-3">
-                        <div class="font-mono font-bold text-slate-800">${item.studentId}</div>
-                        <div class="font-medium text-slate-700">${item.studentName}</div>
-                        ${item.note ? `<div class="text-xs text-slate-400 italic">${item.note}</div>` : ''}
+                        <div class="font-mono font-bold text-slate-800">${escapeHtml(item.studentId)}</div>
+                        <div class="font-medium text-slate-700">${escapeHtml(item.studentName)}</div>
+                        ${item.note ? `<div class="text-xs text-slate-400 italic">${escapeHtml(item.note)}</div>` : ''}
                     </td>
                     <td class="px-3 py-3 text-center font-medium">${item.s1}</td>
                     <td class="px-3 py-3 text-center font-medium">${item.s2}</td>
@@ -872,7 +882,7 @@
                 .withFailureHandler(function(error) {
                     showToast('ลบไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                 })
-                .deleteRecordByRow(id);
+                .deleteRecordByRow(id, verifiedPin);
         }
 
         function refreshData() {
@@ -892,6 +902,15 @@
                 .getAllRecords();
         }
 
+        // ป้องกัน CSV/Formula Injection เมื่อไฟล์ถูกเปิดด้วย Excel — เติม ' นำหน้าค่าที่ขึ้นต้นด้วยอักขระสูตร และ escape เครื่องหมาย "
+        function csvField(value) {
+            let str = value == null ? '' : String(value);
+            if (/^[=+\-@\t\r]/.test(str)) {
+                str = "'" + str;
+            }
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+
         function exportToCSV() {
             if (scoreData.length === 0) {
                 showToast('ไม่มีข้อมูลสำหรับดาวน์โหลด', 'error');
@@ -900,7 +919,18 @@
 
             let csv = "\uFEFFรหัสนักศึกษา,ชื่อ-นามสกุล,ฐาน1_ซักประวัติ,ฐาน2_ตรวจร่างกาย,ฐาน3_หัตถการ,ฐาน4_สื่อสาร,คะแนนรวม,ผลการสอบ,หมายเหตุ,เวลาที่บันทึก\n";
             scoreData.forEach(i => {
-                csv += `"${i.studentId}","${i.studentName}",${i.s1},${i.s2},${i.s3},${i.s4},${i.total},"${i.passed ? 'PASS' : 'FAIL'}","${i.note || ''}","${i.timestamp}"\n`;
+                csv += [
+                    csvField(i.studentId),
+                    csvField(i.studentName),
+                    csvField(i.s1),
+                    csvField(i.s2),
+                    csvField(i.s3),
+                    csvField(i.s4),
+                    csvField(i.total),
+                    csvField(i.passed ? 'PASS' : 'FAIL'),
+                    csvField(i.note || ''),
+                    csvField(i.timestamp)
+                ].join(',') + '\n';
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
