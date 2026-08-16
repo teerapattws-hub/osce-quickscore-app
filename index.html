@@ -91,9 +91,10 @@
                 <i class="fa-solid fa-stethoscope text-emerald-500"></i>
                 <span>วิเคราะห์รายฐาน (Stations)</span>
             </button>
-            <button onclick="switchTab('students')" id="tab-students" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition">
+            <button onclick="switchTab('students')" id="tab-students" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition relative">
                 <i class="fa-solid fa-users text-indigo-500"></i>
                 <span>รายชื่อนักศึกษา & ผลสอบ</span>
+                <span id="lock-badge-students" class="ml-1 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full"><i class="fa-solid fa-lock"></i></span>
             </button>
             <button onclick="switchTab('entry')" id="tab-entry" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition relative">
                 <i class="fa-solid fa-pen-to-square text-amber-500"></i>
@@ -511,10 +512,12 @@
 
     <script>
         // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
-        let scoreData = [];
+        let scoreData = [];       // ข้อมูลสรุปแบบไม่ระบุตัวตน (เปิดดูได้ทุกคน) — ใช้กับ Overview/Stations
+        let fullScoreData = [];   // ข้อมูลเต็มพร้อมชื่อ/รหัสนักศึกษา — ต้องปลดล็อก PIN ก่อนถึงจะมีค่า
         let isAdminUnlocked = false;
-        // PIN ไม่ถูกเก็บไว้ในไฟล์นี้เลย (เพื่อไม่ให้เห็นได้จาก view-source หรือ git) — ยืนยันผ่าน verifyAdminPin() บนเซิร์ฟเวอร์เท่านั้น
-        let verifiedPin = ''; // เก็บ PIN ที่เซิร์ฟเวอร์ยืนยันแล้ว ไว้แนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบข้อมูล
+        // PIN ไม่ถูกเก็บไว้ในไฟล์นี้เลย (เพื่อไม่ให้เห็นได้จาก view-source หรือ git) — ยืนยันผ่าน getFullRecords() บนเซิร์ฟเวอร์เท่านั้น
+        let verifiedPin = ''; // เก็บ PIN ที่เซิร์ฟเวอร์ยืนยันแล้ว ไว้แนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบ/ดูรายชื่อ
+        let pendingUnlockTab = null; // แท็บที่ผู้ใช้พยายามเข้าตอนยังไม่ปลดล็อก จะพากลับไปแท็บนั้นหลังยืนยัน PIN สำเร็จ
 
         // Chart Instance Variables
         let stationsBarChart = null;
@@ -527,7 +530,7 @@
             loadRecordsFromSheet();
         };
 
-        // ดึงข้อมูลคะแนนทั้งหมดจาก Google Sheet ผ่าน google.script.run (ใช้ได้เมื่อเปิดผ่าน Web App URL ของ Apps Script เท่านั้น)
+        // ดึงข้อมูลสรุป (ไม่มีชื่อ/รหัสนักศึกษา) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
         function loadRecordsFromSheet() {
             google.script.run
                 .withSuccessHandler(function(records) {
@@ -537,12 +540,28 @@
                 .withFailureHandler(function(error) {
                     showToast('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                 })
-                .getAllRecords();
+                .getSummaryRecords();
+        }
+
+        // ดึงข้อมูลเต็ม (มีชื่อ/รหัสนักศึกษา) — ต้องแนบ PIN ที่ยืนยันแล้วเสมอ
+        function loadFullRecords(onDone) {
+            google.script.run
+                .withSuccessHandler(function(records) {
+                    fullScoreData = records || [];
+                    renderTable();
+                    if (onDone) onDone();
+                })
+                .withFailureHandler(function(error) {
+                    showToast('โหลดรายชื่อนักศึกษาไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                    if (onDone) onDone();
+                })
+                .getFullRecords(verifiedPin);
         }
 
         // Navigation Tab Switching
         function switchTab(tabName) {
-            if (tabName === 'entry' && !isAdminUnlocked) {
+            if ((tabName === 'entry' || tabName === 'students') && !isAdminUnlocked) {
+                pendingUnlockTab = tabName;
                 openAdminModal();
                 return;
             }
@@ -558,14 +577,20 @@
             }
         }
 
+        function updateLockUI() {
+            document.getElementById('admin-btn-label').textContent = isAdminUnlocked ? 'ออกจากโหมดบันทึกคะแนน' : 'โหมดกรรมการบันทึกคะแนน';
+            document.getElementById('lock-badge').classList.toggle('hidden', isAdminUnlocked);
+            document.getElementById('lock-badge-students').classList.toggle('hidden', isAdminUnlocked);
+        }
+
         // Admin Security Pin Handlers
         function openAdminModal() {
             if (isAdminUnlocked) {
                 // Lock back to viewer mode
                 isAdminUnlocked = false;
                 verifiedPin = '';
-                document.getElementById('admin-btn-label').textContent = 'โหมดกรรมการบันทึกคะแนน';
-                document.getElementById('lock-badge').classList.remove('hidden');
+                fullScoreData = [];
+                updateLockUI();
                 switchTab('overview');
                 showToast('ออกจากโหมดบันทึกคะแนนแล้ว');
             } else {
@@ -577,6 +602,7 @@
 
         function closeAdminModal() {
             document.getElementById('admin-pin-modal').classList.add('hidden');
+            pendingUnlockTab = null;
         }
 
         function verifyPin() {
@@ -585,14 +611,15 @@
             confirmBtn.disabled = true;
 
             google.script.run
-                .withSuccessHandler(function() {
+                .withSuccessHandler(function(records) {
                     confirmBtn.disabled = false;
                     isAdminUnlocked = true;
                     verifiedPin = inputPin;
-                    closeAdminModal();
-                    document.getElementById('admin-btn-label').textContent = 'ออกจากโหมดบันทึกคะแนน';
-                    document.getElementById('lock-badge').classList.add('hidden');
-                    switchTab('entry');
+                    fullScoreData = records || [];
+                    document.getElementById('admin-pin-modal').classList.add('hidden');
+                    updateLockUI();
+                    switchTab(pendingUnlockTab || 'entry');
+                    pendingUnlockTab = null;
                     showToast('ยืนยันรหัส PIN สำเร็จ! เปิดโหมดบันทึกคะแนนแล้ว');
                     renderTable();
                 })
@@ -600,7 +627,7 @@
                     confirmBtn.disabled = false;
                     showToast('รหัส PIN ไม่ถูกต้อง! กรุณาลองใหม่', 'error');
                 })
-                .verifyAdminPin(inputPin);
+                .getFullRecords(inputPin);
         }
 
         function updateAllViews() {
@@ -786,7 +813,8 @@
 
             google.script.run
                 .withSuccessHandler(function(record) {
-                    scoreData.unshift(record);
+                    fullScoreData.unshift(record);
+                    scoreData.unshift(toSummary(record));
                     updateAllViews();
                     resetSubmitButton();
                     clearEntryForm();
@@ -798,6 +826,17 @@
                     showToast('บันทึกไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                 })
                 .addRecord(payload);
+        }
+
+        // ตัดข้อมูลระบุตัวตน (ชื่อ/รหัสนักศึกษา/หมายเหตุ) ออก ก่อนเก็บลง scoreData ที่เป็นข้อมูลสาธารณะ
+        function toSummary(record) {
+            return {
+                id: record.id,
+                timestamp: record.timestamp,
+                s1: record.s1, s2: record.s2, s3: record.s3, s4: record.s4,
+                total: record.total,
+                passed: record.passed
+            };
         }
 
         function resetSubmitButton() {
@@ -834,7 +873,7 @@
 
             tbody.innerHTML = '';
 
-            const filtered = scoreData.filter(item => {
+            const filtered = fullScoreData.filter(item => {
                 const matchSearch = item.studentId.toLowerCase().includes(search) || item.studentName.toLowerCase().includes(search);
                 const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
                 return matchSearch && matchFilter;
@@ -887,6 +926,7 @@
                 .withSuccessHandler(function() {
                     showToast('ลบรายการคะแนนสำเร็จ');
                     loadRecordsFromSheet();
+                    loadFullRecords();
                 })
                 .withFailureHandler(function(error) {
                     showToast('ลบไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
@@ -897,18 +937,27 @@
         function refreshData() {
             const icon = document.getElementById('refresh-icon');
             icon.classList.add('fa-spin');
+
+            const stopSpin = () => {
+                icon.classList.remove('fa-spin');
+                showToast('รีเฟรชข้อมูลเรียบร้อย');
+            };
+
             google.script.run
                 .withSuccessHandler(function(records) {
                     scoreData = records || [];
                     updateAllViews();
-                    icon.classList.remove('fa-spin');
-                    showToast('รีเฟรชข้อมูลเรียบร้อย');
+                    if (isAdminUnlocked) {
+                        loadFullRecords(stopSpin);
+                    } else {
+                        stopSpin();
+                    }
                 })
                 .withFailureHandler(function(error) {
                     icon.classList.remove('fa-spin');
                     showToast('รีเฟรชข้อมูลไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                 })
-                .getAllRecords();
+                .getSummaryRecords();
         }
 
         // ป้องกัน CSV/Formula Injection เมื่อไฟล์ถูกเปิดด้วย Excel — เติม ' นำหน้าค่าที่ขึ้นต้นด้วยอักขระสูตร และ escape เครื่องหมาย "
@@ -921,13 +970,13 @@
         }
 
         function exportToCSV() {
-            if (scoreData.length === 0) {
+            if (fullScoreData.length === 0) {
                 showToast('ไม่มีข้อมูลสำหรับดาวน์โหลด', 'error');
                 return;
             }
 
             let csv = "\uFEFFรหัสนักศึกษา,ชื่อ-นามสกุล,ฐาน1_ซักประวัติ,ฐาน2_ตรวจร่างกาย,ฐาน3_หัตถการ,ฐาน4_สื่อสาร,คะแนนรวม,ผลการสอบ,หมายเหตุ,เวลาที่บันทึก\n";
-            scoreData.forEach(i => {
+            fullScoreData.forEach(i => {
                 csv += [
                     csvField(i.studentId),
                     csvField(i.studentName),

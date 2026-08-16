@@ -50,15 +50,20 @@ function requireAdminPin_(pin) {
   cache.remove(PIN_LOCKOUT_CACHE_KEY);
 }
 
-// ตรวจสอบ PIN อย่างเดียวโดยไม่แก้ข้อมูล — ใช้ตอนกรรมการปลดล็อกโหมดบันทึกคะแนนบนหน้าเว็บ
-function verifyAdminPin(pin) {
-  requireAdminPin_(pin);
-  return { ok: true };
-}
-
 function clampScore_(value) {
   var n = Number(value) || 0;
   return Math.max(0, Math.min(25, n));
+}
+
+// ป้องกัน Formula Injection ในตัว Sheet เอง — ถ้าปล่อยให้ค่าที่ขึ้นต้นด้วย =, +, -, @ เข้าไปตรง ๆ
+// Google Sheets จะตีความเป็นสูตรทันทีเหมือนมีคนพิมพ์ใส่เซลล์เอง (เช่น ดึงข้อมูลออกไปเซิร์ฟเวอร์ภายนอกผ่าน IMPORTXML)
+// เติม ' นำหน้าเพื่อบังคับให้เก็บเป็นข้อความเสมอ (Sheets จะตัด ' ออกเองตอนอ่านค่ากลับ ไม่กระทบข้อมูลที่แสดง)
+function sanitizeCellText_(value) {
+  var str = value == null ? '' : String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  return str;
 }
 
 var HEADER_ROW = [
@@ -89,8 +94,9 @@ function getSheet_() {
   return sheet;
 }
 
-// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet เพื่อแสดงในแดชบอร์ด (เรียกผ่าน google.script.run)
-function getAllRecords() {
+// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet (รวมชื่อ/รหัสนักศึกษา) — เป็น private helper เท่านั้น
+// ห้าม expose ตรง ๆ ผ่าน google.script.run เพราะมีข้อมูลระบุตัวตน ต้องผ่าน getFullRecords() ที่เช็ค PIN ก่อนเสมอ
+function getAllRecords_() {
   var sheet = getSheet_();
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
@@ -121,6 +127,25 @@ function getAllRecords() {
   return records.reverse(); // แสดงรายการล่าสุดขึ้นก่อน
 }
 
+// ข้อมูลสรุปแบบไม่ระบุตัวตน (ไม่มีชื่อ/รหัสนักศึกษา/หมายเหตุ) — ใช้กับแท็บภาพรวมที่เปิดดูได้ทุกคน ไม่ต้องมี PIN
+function getSummaryRecords() {
+  return getAllRecords_().map(function(r) {
+    return {
+      id: r.id,
+      timestamp: r.timestamp,
+      s1: r.s1, s2: r.s2, s3: r.s3, s4: r.s4,
+      total: r.total,
+      passed: r.passed
+    };
+  });
+}
+
+// ข้อมูลเต็มพร้อมชื่อ/รหัสนักศึกษา — ต้องยืนยัน PIN ก่อนทุกครั้ง ใช้กับแท็บ "รายชื่อนักศึกษา & ผลสอบ"
+function getFullRecords(pin) {
+  requireAdminPin_(pin);
+  return getAllRecords_();
+}
+
 // บันทึกคะแนนสอบ 1 รายการลง Sheet (เรียกผ่าน google.script.run)
 function addRecord(data) {
   var lock = LockService.getScriptLock();
@@ -143,15 +168,19 @@ function addRecord(data) {
     var passed = total >= 60;
     var now = new Date();
 
+    var studentId = sanitizeCellText_(data.studentId);
+    var studentName = sanitizeCellText_(data.studentName);
+    var note = sanitizeCellText_(data.note || "");
+
     var sheet = getSheet_();
     sheet.appendRow([
       now,
-      data.studentId,
-      data.studentName,
+      studentId,
+      studentName,
       s1, s2, s3, s4,
       total,
       passed ? "PASS" : "FAIL",
-      data.note || ""
+      note
     ]);
 
     return {
