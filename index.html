@@ -865,7 +865,18 @@
             distributionChart.update();
         }
 
+        // กันมือลั่นพิมพ์คะแนนเกิน 25 หรือติดลบ — ตัดค่าในช่องกรอกให้อยู่ในช่วงที่ถูกต้องทันทีที่พิมพ์
+        function clampScoreField_(id) {
+            const el = document.getElementById(id);
+            const val = parseFloat(el.value);
+            if (isNaN(val)) return;
+            if (val > 25) el.value = 25;
+            else if (val < 0) el.value = 0;
+        }
+
         function calculateTotal() {
+            ['input-s1', 'input-s2', 'input-s3', 'input-s4'].forEach(clampScoreField_);
+
             const s1 = parseFloat(document.getElementById('input-s1').value) || 0;
             const s2 = parseFloat(document.getElementById('input-s2').value) || 0;
             const s3 = parseFloat(document.getElementById('input-s3').value) || 0;
