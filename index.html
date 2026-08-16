@@ -490,7 +490,7 @@
             </div>
             <div>
                 <h3 class="font-bold text-slate-800 text-lg">ยืนยันรหัสผ่านกรรมการ</h3>
-                <p class="text-xs text-slate-500 mt-1">กรุณากรอก PIN Code เพื่อปลดล็อกโหมดบันทึกคะแนน<br><span class="text-amber-600 font-mono">(รหัสเริ่มต้นทดสอบ: 1234)</span></p>
+                <p class="text-xs text-slate-500 mt-1">กรุณากรอก PIN Code เพื่อปลดล็อกโหมดบันทึกคะแนน</p>
             </div>
 
             <input type="password" id="input-pin" maxlength="6" placeholder="รหัส PIN 4 หลัก" 
@@ -498,7 +498,7 @@
 
             <div class="flex space-x-2 pt-2">
                 <button onclick="closeAdminModal()" class="w-1/2 py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-xl">ยกเลิก</button>
-                <button onclick="verifyPin()" class="w-1/2 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md">ยืนยัน PIN</button>
+                <button onclick="verifyPin()" id="btn-verify-pin" class="w-1/2 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md">ยืนยัน PIN</button>
             </div>
         </div>
     </div>
@@ -513,8 +513,8 @@
         // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
         let scoreData = [];
         let isAdminUnlocked = false;
-        let verifiedPin = ''; // PIN ที่ยืนยันแล้ว ส่งแนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบข้อมูล
-        const ADMIN_PIN = '1234'; // Default PIN Code for Admin Entry — ต้องตรงกับ ADMIN_PIN ใน Code.js
+        // PIN ไม่ถูกเก็บไว้ในไฟล์นี้เลย (เพื่อไม่ให้เห็นได้จาก view-source หรือ git) — ยืนยันผ่าน verifyAdminPin() บนเซิร์ฟเวอร์เท่านั้น
+        let verifiedPin = ''; // เก็บ PIN ที่เซิร์ฟเวอร์ยืนยันแล้ว ไว้แนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบข้อมูล
 
         // Chart Instance Variables
         let stationsBarChart = null;
@@ -581,17 +581,26 @@
 
         function verifyPin() {
             const inputPin = document.getElementById('input-pin').value.trim();
-            if (inputPin === ADMIN_PIN) {
-                isAdminUnlocked = true;
-                verifiedPin = inputPin;
-                closeAdminModal();
-                document.getElementById('admin-btn-label').textContent = 'ออกจากโหมดบันทึกคะแนน';
-                document.getElementById('lock-badge').classList.add('hidden');
-                switchTab('entry');
-                showToast('ยืนยันรหัส PIN สำเร็จ! เปิดโหมดบันทึกคะแนนแล้ว');
-            } else {
-                showToast('รหัส PIN ไม่ถูกต้อง! กรุณาลองใหม่', 'error');
-            }
+            const confirmBtn = document.getElementById('btn-verify-pin');
+            confirmBtn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(function() {
+                    confirmBtn.disabled = false;
+                    isAdminUnlocked = true;
+                    verifiedPin = inputPin;
+                    closeAdminModal();
+                    document.getElementById('admin-btn-label').textContent = 'ออกจากโหมดบันทึกคะแนน';
+                    document.getElementById('lock-badge').classList.add('hidden');
+                    switchTab('entry');
+                    showToast('ยืนยันรหัส PIN สำเร็จ! เปิดโหมดบันทึกคะแนนแล้ว');
+                    renderTable();
+                })
+                .withFailureHandler(function(error) {
+                    confirmBtn.disabled = false;
+                    showToast('รหัส PIN ไม่ถูกต้อง! กรุณาลองใหม่', 'error');
+                })
+                .verifyAdminPin(inputPin);
         }
 
         function updateAllViews() {

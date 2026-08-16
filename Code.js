@@ -7,14 +7,28 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// PIN สำหรับยืนยันสิทธิ์กรรมการฝั่งเซิร์ฟเวอร์ — ต้องตรงกับ ADMIN_PIN ใน index.html
-// เปลี่ยนรหัสนี้ก่อนใช้งานจริงทุกครั้ง (ห้ามใช้ 1234 ค่าเริ่มต้น)
-var ADMIN_PIN = '1234';
+// PIN สำหรับยืนยันสิทธิ์กรรมการ — เก็บใน Script Properties เท่านั้น ห้าม hardcode ในไฟล์นี้
+// วิธีตั้งค่า (ทำครั้งเดียวต่อโปรเจกต์ ไม่ถูก commit ขึ้น git):
+//   Apps Script Editor > ไอคอนเฟือง "Project Settings" > Script Properties > Add script property
+//   Property: ADMIN_PIN   Value: <รหัสที่ต้องการ>
+function getAdminPin_() {
+  var pin = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+  if (!pin) {
+    throw new Error('ยังไม่ได้ตั้งค่า ADMIN_PIN ใน Script Properties (Project Settings > Script Properties) กรุณาตั้งค่าก่อนใช้งาน');
+  }
+  return pin;
+}
 
 function requireAdminPin_(pin) {
-  if (pin !== ADMIN_PIN) {
+  if (pin !== getAdminPin_()) {
     throw new Error('รหัส PIN ไม่ถูกต้อง หรือหมดสิทธิ์เข้าถึง');
   }
+}
+
+// ตรวจสอบ PIN อย่างเดียวโดยไม่แก้ข้อมูล — ใช้ตอนกรรมการปลดล็อกโหมดบันทึกคะแนนบนหน้าเว็บ
+function verifyAdminPin(pin) {
+  requireAdminPin_(pin);
+  return { ok: true };
 }
 
 function clampScore_(value) {
