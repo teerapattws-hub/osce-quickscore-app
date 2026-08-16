@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSCE Executive Dashboard & QuickScore</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Interactive Dashboard Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0265d2',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; }
+        .tab-active {
+            border-bottom: 3px solid #0284c7;
+            color: #0284c7;
+            font-weight: 600;
+            background-color: rgba(2, 132, 199, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 pb-12">
+
+    <!-- Top Header Bar -->
+    <header class="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white shadow-md text-xl">
+                    <i class="fa-solid fa-square-poll-vertical"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">Dashboard ผลการสอบ OSCE 4 ฐาน</h1>
+                    <p class="text-xs text-slate-300 flex items-center space-x-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>ข้อมูลแบบ Real-time จาก Google Sheets</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Top Header Actions -->
+            <div class="flex items-center space-x-2">
+                <button onclick="refreshData()" title="ดึงข้อมูลใหม่" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium backdrop-blur-sm transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+                    <span class="hidden sm:inline">รีเฟรช</span>
+                </button>
+
+                <button onclick="openAdminModal()" id="btn-admin-mode" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium shadow-md transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-lock"></i>
+                    <span id="admin-btn-label">โหมดกรรมการบันทึกคะแนน</span>
+                </button>
+
+                <button onclick="toggleConfigModal()" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium backdrop-blur-sm transition text-slate-200">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs Bar -->
+    <div class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto text-xs sm:text-sm font-medium text-slate-500">
+            <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn tab-active px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-chart-pie text-brand-500"></i>
+                <span>ภาพรวม (Overview)</span>
+            </button>
+            <button onclick="switchTab('stations')" id="tab-stations" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-stethoscope text-emerald-500"></i>
+                <span>วิเคราะห์รายฐาน (Stations)</span>
+            </button>
+            <button onclick="switchTab('students')" id="tab-students" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition">
+                <i class="fa-solid fa-users text-indigo-500"></i>
+                <span>รายชื่อนักศึกษา & ผลสอบ</span>
+            </button>
+            <button onclick="switchTab('entry')" id="tab-entry" class="tab-btn px-4 py-3.5 flex items-center space-x-2 whitespace-nowrap transition relative">
+                <i class="fa-solid fa-pen-to-square text-amber-500"></i>
+                <span>บันทึกคะแนน (กรรมการ)</span>
+                <span id="lock-badge" class="ml-1 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full"><i class="fa-solid fa-lock"></i></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+
+        <!-- Executive KPI Cards (Always Visible) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+            <!-- Total Students -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">เข้าสอบทั้งหมด</p>
+                    <p class="text-xl font-bold text-slate-800" id="kpi-total">0 คน</p>
+                </div>
+            </div>
+
+            <!-- Pass Rate -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">อัตราการสอบผ่าน</p>
+                    <p class="text-xl font-bold text-emerald-600" id="kpi-pass-rate">0%</p>
+                </div>
+            </div>
+
+            <!-- Mean Score -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">คะแนนเฉลี่ยรวม</p>
+                    <p class="text-xl font-bold text-slate-800"><span id="kpi-avg">0.0</span> <span class="text-xs text-slate-400 font-normal">/100</span></p>
+                </div>
+            </div>
+
+            <!-- Highest Score -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">คะแนนสูงสุด</p>
+                    <p class="text-xl font-bold text-purple-700" id="kpi-max">0.0</p>
+                </div>
+            </div>
+
+            <!-- Lowest Score -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-3 col-span-2 sm:col-span-1">
+                <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-chart-line-down"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 font-medium">คะแนนต่ำสุด</p>
+                    <p class="text-xl font-bold text-rose-600" id="kpi-min">0.0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: OVERVIEW DASHBOARD -->
+        <div id="view-overview" class="tab-content space-y-6">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Bar Chart: Average Score per Station -->
+                <div class="lg:col-span-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-column text-brand-500"></i>
+                                <span>เปรียบเทียบคะแนนเฉลี่ยรายฐาน (Station Comparison)</span>
+                            </h3>
+                            <p class="text-xs text-slate-400">คะแนนเต็มแต่ละฐาน: 25 คะแนน</p>
+                        </div>
+                    </div>
+                    <div class="h-64 sm:h-80 relative">
+                        <canvas id="chart-stations-bar"></canvas>
+                    </div>
+                </div>
+
+                <!-- Donut Chart: Pass vs Fail Ratio -->
+                <div class="lg:col-span-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2 mb-1">
+                            <i class="fa-solid fa-chart-pie text-emerald-500"></i>
+                            <span>สัดส่วนผลการสอบ (Pass / Fail)</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-4">เกณฑ์ผ่าน: คะแนนรวม >= 60 คะแนน</p>
+                    </div>
+                    <div class="h-56 relative flex items-center justify-center">
+                        <canvas id="chart-pass-donut"></canvas>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-4 text-center">
+                        <div class="bg-emerald-50 p-2 rounded-xl border border-emerald-100">
+                            <p class="text-xs text-emerald-700 font-medium">สอบผ่าน (PASS)</p>
+                            <p class="text-lg font-bold text-emerald-700" id="count-pass">0 คน</p>
+                        </div>
+                        <div class="bg-rose-50 p-2 rounded-xl border border-rose-100">
+                            <p class="text-xs text-rose-700 font-medium">ไม่ผ่าน (FAIL)</p>
+                            <p class="text-lg font-bold text-rose-700" id="count-fail">0 คน</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score Distribution Chart -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-area text-indigo-500"></i>
+                    <span>การกระจายตัวของคะแนนสอบรวม (Score Distribution)</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">แสดงจำนวนนักศึกษาตามช่วงคะแนน</p>
+                <div class="h-56 relative">
+                    <canvas id="chart-distribution"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: STATIONS ANALYSIS -->
+        <div id="view-stations" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- Station 1 Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 1: การซักประวัติ (History Taking)</h4>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400">เฉลี่ย</p>
+                            <p class="text-base font-bold text-slate-800" id="st1-avg">0.0</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-emerald-600">สูงสุด</p>
+                            <p class="text-base font-bold text-emerald-700" id="st1-max">0.0</p>
+                        </div>
+                        <div class="bg-rose-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-rose-600">ต่ำสุด</p>
+                            <p class="text-base font-bold text-rose-700" id="st1-min">0.0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Station 2 Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-xs">2</span>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 2: การตรวจร่างกาย (Physical Exam)</h4>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400">เฉลี่ย</p>
+                            <p class="text-base font-bold text-slate-800" id="st2-avg">0.0</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-emerald-600">สูงสุด</p>
+                            <p class="text-base font-bold text-emerald-700" id="st2-max">0.0</p>
+                        </div>
+                        <div class="bg-rose-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-rose-600">ต่ำสุด</p>
+                            <p class="text-base font-bold text-rose-700" id="st2-min">0.0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Station 3 Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 font-bold flex items-center justify-center text-xs">3</span>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 3: ทักษะหัตถการ (Procedural Skill)</h4>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400">เฉลี่ย</p>
+                            <p class="text-base font-bold text-slate-800" id="st3-avg">0.0</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-emerald-600">สูงสุด</p>
+                            <p class="text-base font-bold text-emerald-700" id="st3-max">0.0</p>
+                        </div>
+                        <div class="bg-rose-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-rose-600">ต่ำสุด</p>
+                            <p class="text-base font-bold text-rose-700" id="st3-min">0.0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Station 4 Card -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 font-bold flex items-center justify-center text-xs">4</span>
+                            <h4 class="font-bold text-slate-800">ฐานที่ 4: การสื่อสาร & แนะนำ (Communication)</h4>
+                        </div>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">เต็ม 25</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-slate-400">เฉลี่ย</p>
+                            <p class="text-base font-bold text-slate-800" id="st4-avg">0.0</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-emerald-600">สูงสุด</p>
+                            <p class="text-base font-bold text-emerald-700" id="st4-max">0.0</p>
+                        </div>
+                        <div class="bg-rose-50 p-2 rounded-xl">
+                            <p class="text-[10px] text-rose-600">ต่ำสุด</p>
+                            <p class="text-base font-bold text-rose-700" id="st4-min">0.0</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 3: STUDENT DIRECTORY & SCORES TABLE -->
+        <div id="view-students" class="tab-content hidden space-y-4">
+
+            <!-- Controls & Filters Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div class="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                    <!-- Search Input -->
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                        <input type="text" id="search-box" oninput="renderTable()" placeholder="ค้นหารหัสนักศึกษา หรือ ชื่อ..." 
+                            class="w-full pl-9 pr-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+                    </div>
+
+                    <!-- Filter Dropdown -->
+                    <select id="filter-status" onchange="renderTable()" class="w-full sm:w-auto px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-slate-600">
+                        <option value="all">ผลการสอบทั้งหมด</option>
+                        <option value="pass">เฉพาะผู้สอบผ่าน (PASS)</option>
+                        <option value="fail">เฉพาะผู้ไม่ผ่าน (FAIL)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                    <button onclick="exportToCSV()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-csv text-emerald-600"></i>
+                        <span>ดาวน์โหลด CSV</span>
+                    </button>
+                    <button onclick="syncAllToSheets()" id="btn-sync-all" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium shadow-sm transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>ส่ง Google Sheets</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student Data Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-100">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold">รหัสนักศึกษา / ชื่อ-นามสกุล</th>
+                                <th class="px-3 py-3 font-semibold text-center">ฐาน 1 (25)</th>
+                                <th class="px-3 py-3 font-semibold text-center">ฐาน 2 (25)</th>
+                                <th class="px-3 py-3 font-semibold text-center">ฐาน 3 (25)</th>
+                                <th class="px-3 py-3 font-semibold text-center">ฐาน 4 (25)</th>
+                                <th class="px-4 py-3 font-semibold text-center">คะแนนรวม</th>
+                                <th class="px-4 py-3 font-semibold text-center">สถานะ</th>
+                                <th class="px-3 py-3 font-semibold text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-table-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                            <!-- Dynamic Table Rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="py-12 text-center">
+                    <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-2"></i>
+                    <p class="text-sm font-medium text-slate-400">ยังไม่มีข้อมูลคะแนนสอบ</p>
+                    <p class="text-xs text-slate-300">สลับไปยัง "โหมดกรรมการ" เพื่อเริ่มกรอกคะแนนสอบ</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: ADMIN SCORE ENTRY FORM (LOCKED) -->
+        <div id="view-entry" class="tab-content hidden space-y-6">
+            <div class="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                            <i class="fa-solid fa-clipboard-check text-amber-500"></i>
+                            <span>ฟอร์มบันทึกคะแนนสอบ OSCE (กรรมการกลาง)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">กรอกคะแนนรวม 4 ฐานจากใบคะแนนสอบรายบุคคล</p>
+                    </div>
+                    <span class="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 flex items-center space-x-1">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>โหมดบันทึกข้อมูล</span>
+                    </span>
+                </div>
+
+                <form id="osce-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                    <!-- Student Info Input -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">รหัสนักศึกษา *</label>
+                            <input type="text" id="input-student-id" required placeholder="เช่น 6501001" 
+                                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อ - นามสกุล *</label>
+                            <input type="text" id="input-student-name" required placeholder="เช่น นศพ. สมชาย ใจดี" 
+                                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
+                        </div>
+                    </div>
+
+                    <!-- 4 Station Scores Grid -->
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-700 border-b border-slate-200 pb-2">
+                            <span>คะแนนรายฐาน (ฐานละ 25 คะแนน)</span>
+                            <span class="text-slate-400 font-normal">คะแนนเต็ม 100</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 1: ซักประวัติ</label>
+                                <input type="number" step="0.5" min="0" max="25" id="input-s1" required placeholder="0-25" oninput="calculateTotal()"
+                                    class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 2: ตรวจร่างกาย</label>
+                                <input type="number" step="0.5" min="0" max="25" id="input-s2" required placeholder="0-25" oninput="calculateTotal()"
+                                    class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 3: หัตถการ</label>
+                                <input type="number" step="0.5" min="0" max="25" id="input-s3" required placeholder="0-25" oninput="calculateTotal()"
+                                    class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1 font-medium">ฐาน 4: การสื่อสาร</label>
+                                <input type="number" step="0.5" min="0" max="25" id="input-s4" required placeholder="0-25" oninput="calculateTotal()"
+                                    class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Computed Score Display Card -->
+                    <div class="p-3.5 bg-amber-50/60 rounded-2xl border border-amber-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-amber-900 font-medium">คะแนนรวมทั้งสิ้น</p>
+                            <p class="text-xs text-amber-700">เกณฑ์ผ่านสอบ: >= 60 คะแนน</p>
+                        </div>
+                        <div class="text-right">
+                            <span id="preview-total" class="text-3xl font-bold text-amber-800">0</span>
+                            <span class="text-xs text-amber-700"> / 100</span>
+                            <div id="preview-status" class="text-xs font-bold text-slate-400">ยังไม่ครบ</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ข้อเสนอแนะ / หมายเหตุเพิ่มเติม</label>
+                        <input type="text" id="input-note" placeholder="เช่น ต้องปรับปรุงเรื่อง Sterility ในฐาน 3" 
+                            class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition">
+                    </div>
+
+                    <button type="submit" id="btn-submit" 
+                        class="w-full py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl shadow-md shadow-amber-500/20 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>บันทึกข้อมูลการสอบ</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Admin Security PIN Modal -->
+    <div id="admin-pin-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-lg">ยืนยันรหัสผ่านกรรมการ</h3>
+                <p class="text-xs text-slate-500 mt-1">กรุณากรอก PIN Code เพื่อปลดล็อกโหมดบันทึกคะแนน<br><span class="text-amber-600 font-mono">(รหัสเริ่มต้นทดสอบ: 1234)</span></p>
+            </div>
+
+            <input type="password" id="input-pin" maxlength="6" placeholder="รหัส PIN 4 หลัก" 
+                class="w-full text-center text-2xl tracking-widest px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono">
+
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeAdminModal()" class="w-1/2 py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-xl">ยกเลิก</button>
+                <button onclick="verifyPin()" class="w-1/2 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md">ยืนยัน PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Sheets Setup Modal -->
+    <div id="config-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-sheet-plastic text-emerald-600"></i>
+                    <span>ตั้งค่าเชื่อมต่อ Google Sheets</span>
+                </h3>
+                <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-600">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">Google Apps Script Web App URL</label>
+                    <input type="url" id="sheet-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
+                        class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="font-medium text-slate-700">โค้ด Google Apps Script (รองรับ 4 ฐานสอบ)</label>
+                        <button onclick="copyScriptCode()" class="text-brand-600 font-semibold hover:underline flex items-center space-x-1">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>คัดลอกโค้ด</span>
+                        </button>
+                    </div>
+                    <pre class="bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px] overflow-x-auto max-h-40" id="script-code">
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      "เวลาบันทึก", "รหัสนักศึกษา", "ชื่อ-นามสกุล", 
+      "ฐาน1 (ซักประวัติ)", "ฐาน2 (ตรวจร่างกาย)", 
+      "ฐาน3 (หัตถการ)", "ฐาน4 (สื่อสาร)", 
+      "คะแนนรวม (100)", "ผลการสอบ", "หมายเหตุ"
+    ]);
+  }
+  
+  sheet.appendRow([
+    new Date(),
+    data.studentId,
+    data.studentName,
+    data.s1,
+    data.s2,
+    data.s3,
+    data.s4,
+    data.total,
+    data.passed ? "PASS" : "FAIL",
+    data.note || ""
+  ]);
+  
+  return ContentService.createTextOutput(JSON.stringify({ "result": "success" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button onclick="toggleConfigModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl">ปิด</button>
+                <button onclick="saveSheetConfig()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md">บันทึก URL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Alert Toast -->
+    <div id="toast-msg" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-medium transform transition-all translate-y-20 opacity-0 z-50 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-info text-brand-400" id="toast-icon"></i>
+        <span id="toast-text">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <script>
+        // Application State Variables
+        let scoreData = JSON.parse(localStorage.getItem('osce_score_data')) || [
+            // Sample Mock Data for Instant Preview
+            { id: 1, studentId: '6501001', studentName: 'นศพ. ณัฐวุฒิ ใจดี', s1: 22, s2: 21, s3: 19, s4: 23, total: 85, passed: true, note: 'ทำได้ดีเยี่ยม', synced: true, timestamp: '16/08/2026 14:20' },
+            { id: 2, studentId: '6501002', studentName: 'นศพ. ปิยะดา วงศ์สว่าง', s1: 18, s2: 17, s3: 15, s4: 20, total: 70, passed: true, note: '', synced: true, timestamp: '16/08/2026 14:25' },
+            { id: 3, studentId: '6501003', studentName: 'นศพ. ธนกฤต มั่นคง', s1: 12, s2: 14, s3: 11, s4: 15, total: 52, passed: false, note: 'ต้องปรับปรุงหัตถการ', synced: true, timestamp: '16/08/2026 14:30' },
+            { id: 4, studentId: '6501004', studentName: 'นศพ. ชนิกานต์ สุขเสริฐ', s1: 24, s2: 23, s3: 22, s4: 24, total: 93, passed: true, note: 'ทักษะโดดเด่น', synced: true, timestamp: '16/08/2026 14:35' },
+        ];
+        let sheetAppUrl = localStorage.getItem('osce_sheet_url') || '';
+        let isAdminUnlocked = false;
+        const ADMIN_PIN = '1234'; // Default PIN Code for Admin Entry
+
+        // Chart Instance Variables
+        let stationsBarChart = null;
+        let passDonutChart = null;
+        let distributionChart = null;
+
+        // On Page Initialization
+        window.onload = function() {
+            document.getElementById('sheet-url-input').value = sheetAppUrl;
+            initCharts();
+            updateAllViews();
+        };
+
+        // Navigation Tab Switching
+        function switchTab(tabName) {
+            if (tabName === 'entry' && !isAdminUnlocked) {
+                openAdminModal();
+                return;
+            }
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+
+            if (tabName === 'overview') {
+                updateCharts();
+            }
+        }
+
+        // Admin Security Pin Handlers
+        function openAdminModal() {
+            if (isAdminUnlocked) {
+                // Lock back to viewer mode
+                isAdminUnlocked = false;
+                document.getElementById('admin-btn-label').textContent = 'โหมดกรรมการบันทึกคะแนน';
+                document.getElementById('lock-badge').classList.remove('hidden');
+                switchTab('overview');
+                showToast('ออกจากโหมดบันทึกคะแนนแล้ว');
+            } else {
+                document.getElementById('admin-pin-modal').classList.remove('hidden');
+                document.getElementById('input-pin').value = '';
+                document.getElementById('input-pin').focus();
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-pin-modal').classList.add('hidden');
+        }
+
+        function verifyPin() {
+            const inputPin = document.getElementById('input-pin').value.trim();
+            if (inputPin === ADMIN_PIN) {
+                isAdminUnlocked = true;
+                closeAdminModal();
+                document.getElementById('admin-btn-label').textContent = 'ออกจากโหมดบันทึกคะแนน';
+                document.getElementById('lock-badge').classList.add('hidden');
+                switchTab('entry');
+                showToast('ยืนยันรหัส PIN สำเร็จ! เปิดโหมดบันทึกคะแนนแล้ว');
+            } else {
+                showToast('รหัส PIN ไม่ถูกต้อง! กรุณาลองใหม่', 'error');
+            }
+        }
+
+        function updateAllViews() {
+            calculateKPIs();
+            renderTable();
+            updateCharts();
+        }
+
+        function calculateKPIs() {
+            const total = scoreData.length;
+            document.getElementById('kpi-total').textContent = `${total} คน`;
+
+            if (total === 0) {
+                document.getElementById('kpi-pass-rate').textContent = '0%';
+                document.getElementById('kpi-avg').textContent = '0.0';
+                document.getElementById('kpi-max').textContent = '0.0';
+                document.getElementById('kpi-min').textContent = '0.0';
+                document.getElementById('count-pass').textContent = '0 คน';
+                document.getElementById('count-fail').textContent = '0 คน';
+                return;
+            }
+
+            const passes = scoreData.filter(i => i.passed).length;
+            const passRate = ((passes / total) * 100).toFixed(1);
+
+            const totalsArr = scoreData.map(i => i.total);
+            const sumTotal = totalsArr.reduce((a, b) => a + b, 0);
+            const maxScore = Math.max(...totalsArr);
+            const minScore = Math.min(...totalsArr);
+
+            document.getElementById('kpi-pass-rate').textContent = `${passRate}%`;
+            document.getElementById('kpi-avg').textContent = (sumTotal / total).toFixed(1);
+            document.getElementById('kpi-max').textContent = maxScore.toFixed(1);
+            document.getElementById('kpi-min').textContent = minScore.toFixed(1);
+            document.getElementById('count-pass').textContent = `${passes} คน`;
+            document.getElementById('count-fail').textContent = `${total - passes} คน`;
+
+            // Update Station Analysis Metrics
+            ['s1', 's2', 's3', 's4'].forEach((stKey, idx) => {
+                const stArr = scoreData.map(i => i[stKey]);
+                const stAvg = (stArr.reduce((a, b) => a + b, 0) / total).toFixed(1);
+                const stMax = Math.max(...stArr).toFixed(1);
+                const stMin = Math.min(...stArr).toFixed(1);
+
+                document.getElementById(`st${idx+1}-avg`).textContent = stAvg;
+                document.getElementById(`st${idx+1}-max`).textContent = stMax;
+                document.getElementById(`st${idx+1}-min`).textContent = stMin;
+            });
+        }
+
+        // Chart Initialization
+        function initCharts() {
+            // Station Bar Chart
+            const ctxBar = document.getElementById('chart-stations-bar').getContext('2d');
+            stationsBarChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['ฐาน 1: ซักประวัติ', 'ฐาน 2: ตรวจร่างกาย', 'ฐาน 3: หัตถการ', 'ฐาน 4: การสื่อสาร'],
+                    datasets: [{
+                        label: 'คะแนนเฉลี่ย (เต็ม 25)',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#0284c7', '#10b981', '#a855f7', '#f59e0b'],
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 25 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Donut Pass/Fail Chart
+            const ctxDonut = document.getElementById('chart-pass-donut').getContext('2d');
+            passDonutChart = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ผ่าน (PASS)', 'ไม่ผ่าน (FAIL)'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#10b981', '#f43f5e'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Distribution Histogram Chart
+            const ctxDist = document.getElementById('chart-distribution').getContext('2d');
+            distributionChart = new Chart(ctxDist, {
+                type: 'bar',
+                data: {
+                    labels: ['0-49 คะแนน', '50-59 คะแนน', '60-69 คะแนน', '70-79 คะแนน', '80-89 คะแนน', '90-100 คะแนน'],
+                    datasets: [{
+                        label: 'จำนวนนักศึกษา (คน)',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { ticks: { stepSize: 1 } } }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!stationsBarChart) return;
+
+            const total = scoreData.length;
+            if (total === 0) return;
+
+            // Bar chart data update
+            const avgS1 = scoreData.reduce((a, b) => a + b.s1, 0) / total;
+            const avgS2 = scoreData.reduce((a, b) => a + b.s2, 0) / total;
+            const avgS3 = scoreData.reduce((a, b) => a + b.s3, 0) / total;
+            const avgS4 = scoreData.reduce((a, b) => a + b.s4, 0) / total;
+
+            stationsBarChart.data.datasets[0].data = [avgS1, avgS2, avgS3, avgS4];
+            stationsBarChart.update();
+
+            // Donut chart data update
+            const passes = scoreData.filter(i => i.passed).length;
+            passDonutChart.data.datasets[0].data = [passes, total - passes];
+            passDonutChart.update();
+
+            // Distribution update
+            const distBins = [0, 0, 0, 0, 0, 0];
+            scoreData.forEach(item => {
+                const score = item.total;
+                if (score < 50) distBins[0]++;
+                else if (score < 60) distBins[1]++;
+                else if (score < 70) distBins[2]++;
+                else if (score < 80) distBins[3]++;
+                else if (score < 90) distBins[4]++;
+                else distBins[5]++;
+            });
+            distributionChart.data.datasets[0].data = distBins;
+            distributionChart.update();
+        }
+
+        function calculateTotal() {
+            const s1 = parseFloat(document.getElementById('input-s1').value) || 0;
+            const s2 = parseFloat(document.getElementById('input-s2').value) || 0;
+            const s3 = parseFloat(document.getElementById('input-s3').value) || 0;
+            const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
+
+            const total = s1 + s2 + s3 + s4;
+            document.getElementById('preview-total').textContent = total;
+
+            const statusElem = document.getElementById('preview-status');
+            if (total >= 60) {
+                statusElem.textContent = 'ผ่านเกณฑ์ (PASS)';
+                statusElem.className = 'text-xs font-bold text-emerald-600';
+            } else {
+                statusElem.textContent = 'ไม่ผ่านเกณฑ์ (FAIL)';
+                statusElem.className = 'text-xs font-bold text-rose-500';
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const studentId = document.getElementById('input-student-id').value.trim();
+            const studentName = document.getElementById('input-student-name').value.trim();
+            const s1 = parseFloat(document.getElementById('input-s1').value) || 0;
+            const s2 = parseFloat(document.getElementById('input-s2').value) || 0;
+            const s3 = parseFloat(document.getElementById('input-s3').value) || 0;
+            const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
+            const total = s1 + s2 + s3 + s4;
+            const passed = total >= 60;
+            const note = document.getElementById('input-note').value.trim();
+
+            const newItem = {
+                id: Date.now(),
+                studentId, studentName, s1, s2, s3, s4, total, passed, note,
+                synced: false,
+                timestamp: new Date().toLocaleString('th-TH')
+            };
+
+            scoreData.unshift(newItem);
+            saveData();
+            updateAllViews();
+
+            // Clear inputs
+            document.getElementById('input-student-id').value = '';
+            document.getElementById('input-student-name').value = '';
+            document.getElementById('input-s1').value = '';
+            document.getElementById('input-s2').value = '';
+            document.getElementById('input-s3').value = '';
+            document.getElementById('input-s4').value = '';
+            document.getElementById('input-note').value = '';
+            document.getElementById('preview-total').textContent = '0';
+            document.getElementById('preview-status').textContent = 'ยังไม่ครบ';
+            document.getElementById('preview-status').className = 'text-xs font-bold text-slate-400';
+
+            showToast(`บันทึกคะแนนของ ${studentName} สำเร็จ!`);
+            document.getElementById('input-student-id').focus();
+
+            if (sheetAppUrl) {
+                syncSingleRecord(newItem.id);
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('score-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const search = document.getElementById('search-box').value.toLowerCase();
+            const filter = document.getElementById('filter-status').value;
+
+            tbody.innerHTML = '';
+
+            const filtered = scoreData.filter(item => {
+                const matchSearch = item.studentId.toLowerCase().includes(search) || item.studentName.toLowerCase().includes(search);
+                const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
+                return matchSearch && matchFilter;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+                const statusBadge = item.passed 
+                    ? `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800">PASS</span>`
+                    : `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800">FAIL</span>`;
+
+                const syncIcon = item.synced 
+                    ? `<i class="fa-solid fa-cloud-check text-emerald-500 ml-1" title="ส่งเข้า Sheet เรียบร้อย"></i>`
+                    : `<i class="fa-solid fa-cloud-arrow-up text-amber-500 ml-1 cursor-pointer" onclick="syncSingleRecord(${item.id})" title="กดเพื่อส่งเข้า Sheet"></i>`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3">
+                        <div class="font-mono font-bold text-slate-800">${item.studentId} ${syncIcon}</div>
+                        <div class="font-medium text-slate-700">${item.studentName}</div>
+                        ${item.note ? `<div class="text-xs text-slate-400 italic">${item.note}</div>` : ''}
+                    </td>
+                    <td class="px-3 py-3 text-center font-medium">${item.s1}</td>
+                    <td class="px-3 py-3 text-center font-medium">${item.s2}</td>
+                    <td class="px-3 py-3 text-center font-medium">${item.s3}</td>
+                    <td class="px-3 py-3 text-center font-medium">${item.s4}</td>
+                    <td class="px-4 py-3 text-center font-bold text-slate-800 bg-slate-50/60">${item.total}</td>
+                    <td class="px-4 py-3 text-center">${statusBadge}</td>
+                    <td class="px-3 py-3 text-right">
+                        ${isAdminUnlocked ? `
+                            <button onclick="deleteRecord(${item.id})" class="text-slate-400 hover:text-rose-600 p-1 transition" title="ลบข้อมูล">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : `<span class="text-xs text-slate-300">-</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteRecord(id) {
+            if (!isAdminUnlocked) return;
+            scoreData = scoreData.filter(i => i.id !== id);
+            saveData();
+            updateAllViews();
+            showToast('ลบรายการคะแนนสำเร็จ');
+        }
+
+        function saveData() {
+            localStorage.setItem('osce_score_data', JSON.stringify(scoreData));
+        }
+
+        async function syncSingleRecord(id) {
+            if (!sheetAppUrl) return;
+
+            const item = scoreData.find(i => i.id === id);
+            if (!item) return;
+
+            try {
+                await fetch(sheetAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(item)
+                });
+                item.synced = true;
+                saveData();
+                renderTable();
+            } catch (err) {
+                console.error('Sheet Sync Error:', err);
+            }
+        }
+
+        async function syncAllToSheets() {
+            if (!sheetAppUrl) {
+                toggleConfigModal();
+                showToast('กรุณากรอก Google Sheet Web App URL ก่อนครับ', 'error');
+                return;
+            }
+
+            const unsynced = scoreData.filter(i => !i.synced);
+            if (unsynced.length === 0) {
+                showToast('ข้อมูลทั้งหมดถูกส่งไป Google Sheets แล้ว');
+                return;
+            }
+
+            const btn = document.getElementById('btn-sync-all');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>กำลังส่ง...</span>`;
+
+            for (let item of unsynced) {
+                await syncSingleRecord(item.id);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> <span>ส่ง Google Sheets</span>`;
+            showToast('ส่งข้อมูลทั้งหมดไปยัง Google Sheets สำเร็จ!');
+        }
+
+        function refreshData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            setTimeout(() => {
+                updateAllViews();
+                icon.classList.remove('fa-spin');
+                showToast('รีเฟรชข้อมูลเรียบร้อย');
+            }, 500);
+        }
+
+        function toggleConfigModal() {
+            document.getElementById('config-modal').classList.toggle('hidden');
+        }
+
+        function saveSheetConfig() {
+            const url = document.getElementById('sheet-url-input').value.trim();
+            sheetAppUrl = url;
+            localStorage.setItem('osce_sheet_url', url);
+            toggleConfigModal();
+            showToast('บันทึกการตั้งค่า Google Sheets สำเร็จ');
+        }
+
+        function copyScriptCode() {
+            const code = document.getElementById('script-code').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('คัดลอกโค้ด Apps Script สำเร็จ!');
+        }
+
+        function exportToCSV() {
+            if (scoreData.length === 0) {
+                showToast('ไม่มีข้อมูลสำหรับดาวน์โหลด', 'error');
+                return;
+            }
+
+            let csv = "\uFEFFรหัสนักศึกษา,ชื่อ-นามสกุล,ฐาน1_ซักประวัติ,ฐาน2_ตรวจร่างกาย,ฐาน3_หัตถการ,ฐาน4_สื่อสาร,คะแนนรวม,ผลการสอบ,หมายเหตุ,เวลาที่บันทึก\n";
+            scoreData.forEach(i => {
+                csv += `"${i.studentId}","${i.studentName}",${i.s1},${i.s2},${i.s3},${i.s4},${i.total},"${i.passed ? 'PASS' : 'FAIL'}","${i.note || ''}","${i.timestamp}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OSCE_Dashboard_Scores_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            showToast('ส่งออกไฟล์ CSV สำเร็จ!');
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast-msg');
+            const toastText = document.getElementById('toast-text');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastText.textContent = msg;
+            toastIcon.className = type === 'error' ? 'fa-solid fa-circle-exclamation text-rose-400' : 'fa-solid fa-circle-info text-brand-400';
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
