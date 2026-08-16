@@ -154,7 +154,12 @@ function getTopScorers(n) {
     .sort(function(a, b) { return b.total - a.total; })
     .slice(0, count)
     .map(function(r) {
-      return { studentName: r.studentName, total: r.total, passed: r.passed };
+      return {
+        studentName: r.studentName,
+        s1: r.s1, s2: r.s2, s3: r.s3, s4: r.s4,
+        total: r.total,
+        passed: r.passed
+      };
     });
 }
 

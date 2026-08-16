@@ -555,7 +555,9 @@
             if (!topScorersChart) return;
             const medals = ['🥇', '🥈', '🥉'];
             topScorersChart.data.labels = top.map((r, i) => `${medals[i] || ''} ${r.studentName}`);
-            topScorersChart.data.datasets[0].data = top.map(r => r.total);
+            ['s1', 's2', 's3', 's4'].forEach((key, idx) => {
+                topScorersChart.data.datasets[idx].data = top.map(r => r[key]);
+            });
             topScorersChart.update();
         }
 
@@ -737,6 +739,10 @@
             });
         }
 
+        // สีประจำแต่ละฐาน ใช้ร่วมกันทุกกราฟในหน้าเว็บเพื่อให้ผู้ดูจำสีคู่กับฐานได้ตรงกัน
+        const STATION_COLORS = ['#0284c7', '#10b981', '#a855f7', '#f59e0b'];
+        const STATION_SHORT_LABELS = ['ฐาน 1', 'ฐาน 2', 'ฐาน 3', 'ฐาน 4'];
+
         // Chart Initialization
         function initCharts() {
             // Station Bar Chart
@@ -748,7 +754,7 @@
                     datasets: [{
                         label: 'คะแนนเฉลี่ย (เต็ม 25)',
                         data: [0, 0, 0, 0],
-                        backgroundColor: ['#0284c7', '#10b981', '#a855f7', '#f59e0b'],
+                        backgroundColor: STATION_COLORS,
                         borderRadius: 8,
                     }]
                 },
@@ -798,25 +804,28 @@
                 }
             });
 
-            // Top 3 Highest Scorers Chart
+            // Top 3 Highest Scorers Chart — แท่งซ้อน (stacked) แยกสีตามสัดส่วนคะแนนแต่ละฐาน
             const ctxTop3 = document.getElementById('chart-top3').getContext('2d');
             topScorersChart = new Chart(ctxTop3, {
                 type: 'bar',
                 data: {
                     labels: [],
-                    datasets: [{
-                        label: 'คะแนนรวม',
+                    datasets: STATION_SHORT_LABELS.map((label, idx) => ({
+                        label: label,
                         data: [],
-                        backgroundColor: ['#f59e0b', '#94a3b8', '#b45309'],
-                        borderRadius: 8
-                    }]
+                        backgroundColor: STATION_COLORS[idx],
+                        borderRadius: 4
+                    }))
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { x: { min: 0, max: 100 } },
-                    plugins: { legend: { display: false } }
+                    scales: {
+                        x: { min: 0, max: 100, stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
                 }
             });
         }
