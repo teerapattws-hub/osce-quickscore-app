@@ -19,10 +19,35 @@ function getAdminPin_() {
   return pin;
 }
 
+// ป้องกันการลองสุ่ม PIN (brute force) — ล็อกชั่วคราวหลังพิมพ์ผิดติดกันเกินจำนวนที่กำหนด
+var PIN_MAX_ATTEMPTS = 5;
+var PIN_LOCKOUT_SECONDS = 300; // 5 นาที
+var PIN_ATTEMPT_CACHE_KEY = 'pin_fail_count';
+var PIN_LOCKOUT_CACHE_KEY = 'pin_locked_until';
+
 function requireAdminPin_(pin) {
-  if (pin !== getAdminPin_()) {
-    throw new Error('รหัส PIN ไม่ถูกต้อง หรือหมดสิทธิ์เข้าถึง');
+  var cache = CacheService.getScriptCache();
+  var now = Date.now();
+  var lockedUntil = Number(cache.get(PIN_LOCKOUT_CACHE_KEY) || 0);
+
+  if (lockedUntil && now < lockedUntil) {
+    var waitSec = Math.ceil((lockedUntil - now) / 1000);
+    throw new Error('กรอกรหัส PIN ผิดหลายครั้งเกินไป กรุณารออีก ' + waitSec + ' วินาทีแล้วลองใหม่');
   }
+
+  if (pin !== getAdminPin_()) {
+    var attempts = Number(cache.get(PIN_ATTEMPT_CACHE_KEY) || 0) + 1;
+    if (attempts >= PIN_MAX_ATTEMPTS) {
+      cache.put(PIN_LOCKOUT_CACHE_KEY, String(now + PIN_LOCKOUT_SECONDS * 1000), PIN_LOCKOUT_SECONDS);
+      cache.remove(PIN_ATTEMPT_CACHE_KEY);
+      throw new Error('กรอกรหัส PIN ผิดเกิน ' + PIN_MAX_ATTEMPTS + ' ครั้ง ถูกล็อกชั่วคราว ' + PIN_LOCKOUT_SECONDS + ' วินาที');
+    }
+    cache.put(PIN_ATTEMPT_CACHE_KEY, String(attempts), PIN_LOCKOUT_SECONDS);
+    throw new Error('รหัส PIN ไม่ถูกต้อง (ผิดไปแล้ว ' + attempts + '/' + PIN_MAX_ATTEMPTS + ' ครั้ง)');
+  }
+
+  cache.remove(PIN_ATTEMPT_CACHE_KEY);
+  cache.remove(PIN_LOCKOUT_CACHE_KEY);
 }
 
 // ตรวจสอบ PIN อย่างเดียวโดยไม่แก้ข้อมูล — ใช้ตอนกรรมการปลดล็อกโหมดบันทึกคะแนนบนหน้าเว็บ
@@ -94,7 +119,9 @@ function getAllRecords() {
 // บันทึกคะแนนสอบ 1 รายการลง Sheet (เรียกผ่าน google.script.run)
 function addRecord(data) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
+  if (!lock.tryLock(10000)) {
+    throw new Error('ระบบมีผู้บันทึกข้อมูลพร้อมกันจำนวนมาก กรุณาลองบันทึกใหม่อีกครั้ง');
+  }
 
   try {
     requireAdminPin_(data && data.pin);
@@ -141,7 +168,9 @@ function addRecord(data) {
 // ลบข้อมูล 1 แถวออกจาก Sheet ตามเลขแถว (id ที่ได้จาก getAllRecords)
 function deleteRecordByRow(rowId, pin) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
+  if (!lock.tryLock(10000)) {
+    throw new Error('ระบบมีผู้แก้ไขข้อมูลพร้อมกันจำนวนมาก กรุณาลองใหม่อีกครั้ง');
+  }
 
   try {
     requireAdminPin_(pin);
