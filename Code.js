@@ -93,7 +93,7 @@ function getSheet_() {
   return sheet;
 }
 
-// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet (รวมชื่อนักศึกษา) — เป็น private helper เท่านั้น
+// อ่านข้อมูลคะแนนทั้งหมดจาก Sheet (รวมชื่อผู้เข้าสอบ) — เป็น private helper เท่านั้น
 // ห้าม expose ตรง ๆ ผ่าน google.script.run เพราะมีข้อมูลระบุตัวตน ต้องผ่าน getFullRecords() ที่เช็ค PIN ก่อนเสมอ
 // โครงสร้างคอลัมน์: A=เวลาบันทึก, B=ชื่อ-นามสกุล, C-F=ฐาน1-4, G=คะแนนรวม, H=ผลการสอบ, I=หมายเหตุ
 function getAllRecords_() {
@@ -126,7 +126,7 @@ function getAllRecords_() {
   return records.reverse(); // แสดงรายการล่าสุดขึ้นก่อน
 }
 
-// ข้อมูลสรุปแบบไม่ระบุตัวตน (ไม่มีชื่อ/รหัสนักศึกษา/หมายเหตุ) — ใช้กับแท็บภาพรวมที่เปิดดูได้ทุกคน ไม่ต้องมี PIN
+// ข้อมูลสรุปแบบไม่ระบุตัวตน (ไม่มีชื่อ/หมายเหตุ) — ใช้กับแท็บภาพรวมที่เปิดดูได้ทุกคน ไม่ต้องมี PIN
 function getSummaryRecords() {
   return getAllRecords_().map(function(r) {
     return {
@@ -139,7 +139,7 @@ function getSummaryRecords() {
   });
 }
 
-// ข้อมูลเต็มพร้อมชื่อนักศึกษา — ต้องยืนยัน PIN ก่อนทุกครั้ง ใช้กับแท็บ "รายชื่อนักศึกษา & ผลสอบ"
+// ข้อมูลเต็มพร้อมชื่อผู้เข้าสอบ — ต้องยืนยัน PIN ก่อนทุกครั้ง ใช้กับแท็บ "รายชื่อผู้สอบ & ผลสอบ"
 function getFullRecords(pin) {
   requireAdminPin_(pin);
   return getAllRecords_();
@@ -174,7 +174,7 @@ function addRecord(data) {
     requireAdminPin_(data && data.pin);
 
     if (!data || !data.studentName) {
-      throw new Error('กรุณากรอกชื่อ-นามสกุลนักศึกษา');
+      throw new Error('กรุณากรอกชื่อ-นามสกุลผู้เข้าสอบ');
     }
 
     var s1 = clampScore_(data.s1);

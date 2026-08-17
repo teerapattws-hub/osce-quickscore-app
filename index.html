@@ -217,7 +217,7 @@
                     <i class="fa-solid fa-chart-area text-indigo-500"></i>
                     <span>การกระจายตัวของคะแนนสอบรวม (Score Distribution)</span>
                 </h3>
-                <p class="text-xs text-slate-400 mb-4">แสดงจำนวนนักศึกษาตามช่วงคะแนน</p>
+                <p class="text-xs text-slate-400 mb-4">แสดงจำนวนผู้เข้าสอบตามช่วงคะแนน</p>
                 <div class="h-56 relative">
                     <canvas id="chart-distribution"></canvas>
                 </div>
@@ -519,7 +519,7 @@
     <script>
         // Application State Variables — Google Sheet คือแหล่งข้อมูลจริงเพียงแหล่งเดียว (single source of truth)
         let scoreData = [];       // ข้อมูลสรุปแบบไม่ระบุตัวตน (เปิดดูได้ทุกคน) — ใช้กับ Overview/Stations
-        let fullScoreData = [];   // ข้อมูลเต็มพร้อมชื่อนักศึกษา — ต้องปลดล็อก PIN ก่อนถึงจะมีค่า
+        let fullScoreData = [];   // ข้อมูลเต็มพร้อมชื่อผู้เข้าสอบ — ต้องปลดล็อก PIN ก่อนถึงจะมีค่า
         let isAdminUnlocked = false;
         // PIN ไม่ถูกเก็บไว้ในไฟล์นี้เลย (เพื่อไม่ให้เห็นได้จาก view-source หรือ git) — ยืนยันผ่าน getFullRecords() บนเซิร์ฟเวอร์เท่านั้น
         let verifiedPin = ''; // เก็บ PIN ที่เซิร์ฟเวอร์ยืนยันแล้ว ไว้แนบไปให้ server ตรวจซ้ำทุกครั้งที่บันทึก/ลบ/ดูรายชื่อ
@@ -592,7 +592,7 @@
             });
         }
 
-        // ดึงข้อมูลสรุป (ไม่มีชื่อนักศึกษา) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
+        // ดึงข้อมูลสรุป (ไม่มีชื่อผู้เข้าสอบ) จาก Google Sheet ผ่าน google.script.run — เปิดให้ใครก็ดูได้ ไม่ต้องมี PIN
         function loadRecordsFromSheet() {
             google.script.run
                 .withSuccessHandler(function(records) {
@@ -605,7 +605,7 @@
                 .getSummaryRecords();
         }
 
-        // ดึงข้อมูลเต็ม (มีชื่อนักศึกษา) — ต้องแนบ PIN ที่ยืนยันแล้วเสมอ
+        // ดึงข้อมูลเต็ม (มีชื่อผู้เข้าสอบ) — ต้องแนบ PIN ที่ยืนยันแล้วเสมอ
         function loadFullRecords(onDone) {
             google.script.run
                 .withSuccessHandler(function(records) {
@@ -614,7 +614,7 @@
                     if (onDone) onDone();
                 })
                 .withFailureHandler(function(error) {
-                    showToast('โหลดรายชื่อนักศึกษาไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
+                    showToast('โหลดรายชื่อผู้เข้าสอบไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                     if (onDone) onDone();
                 })
                 .getFullRecords(verifiedPin);
@@ -799,7 +799,7 @@
                 data: {
                     labels: ['0-49 คะแนน', '50-59 คะแนน', '60-69 คะแนน', '70-79 คะแนน', '80-89 คะแนน', '90-100 คะแนน'],
                     datasets: [{
-                        label: 'จำนวนนักศึกษา (คน)',
+                        label: 'จำนวนผู้เข้าสอบ (คน)',
                         data: [0, 0, 0, 0, 0, 0],
                         backgroundColor: '#6366f1',
                         borderRadius: 6
