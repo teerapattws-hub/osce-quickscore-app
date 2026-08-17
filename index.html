@@ -826,12 +826,35 @@
                 type: 'bar',
                 data: {
                     labels: [],
-                    datasets: STATION_SHORT_LABELS.map((label, idx) => ({
-                        label: label,
-                        data: [],
-                        backgroundColor: STATION_COLORS[idx],
-                        borderRadius: 4
-                    }))
+                    datasets: STATION_SHORT_LABELS.map((label, idx) => {
+                        const isLastStation = idx === STATION_SHORT_LABELS.length - 1;
+                        const dataset = {
+                            label: label,
+                            data: [],
+                            backgroundColor: STATION_COLORS[idx],
+                            borderRadius: 4
+                        };
+
+                        // ฐานสุดท้าย (ขวาสุดของแท่งซ้อน) เพิ่ม label คะแนนรวมไว้เหนือปลายแท่ง นอกเหนือจาก label คะแนนฐานของตัวเอง
+                        if (isLastStation) {
+                            dataset.datalabels = [
+                                {}, // label คะแนนฐาน 4 เอง — ใช้ค่าเริ่มต้นระดับกราฟ (Mid)
+                                {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    color: '#1e293b',
+                                    font: { weight: 'bold', size: 11 },
+                                    formatter: (value, context) => {
+                                        const dataIndex = context.dataIndex;
+                                        const total = context.chart.data.datasets.reduce((sum, ds) => sum + (ds.data[dataIndex] || 0), 0);
+                                        return total.toFixed(1);
+                                    }
+                                }
+                            ];
+                        }
+
+                        return dataset;
+                    })
                 },
                 options: {
                     indexAxis: 'y',
@@ -844,7 +867,10 @@
                     plugins: {
                         legend: { position: 'bottom' },
                         datalabels: {
-                            ...BAR_DATALABEL_STYLE,
+                            anchor: 'center',
+                            align: 'center',
+                            color: '#fff',
+                            font: { weight: 'bold', size: 10 },
                             formatter: (value) => value.toFixed(1),
                             display: (context) => context.dataset.data[context.dataIndex] > 0
                         }
