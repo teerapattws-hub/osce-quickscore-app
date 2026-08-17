@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js for Interactive Dashboard Charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
     <script>
         tailwind.config = {
@@ -743,6 +744,9 @@
         const STATION_COLORS = ['#0284c7', '#10b981', '#a855f7', '#f59e0b'];
         const STATION_SHORT_LABELS = ['ฐาน 1', 'ฐาน 2', 'ฐาน 3', 'ฐาน 4'];
 
+        // สไตล์ Data Label มาตรฐานสำหรับกราฟแท่งทุกอัน — วางไว้ใต้ปลายแท่ง (anchor: end, align: bottom)
+        const BAR_DATALABEL_STYLE = { anchor: 'end', align: 'bottom', color: '#fff', font: { weight: 'bold', size: 10 } };
+
         // Chart Initialization
         function initCharts() {
             // Station Bar Chart
@@ -762,8 +766,12 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: { y: { min: 0, max: 25 } },
-                    plugins: { legend: { display: false } }
-                }
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { ...BAR_DATALABEL_STYLE, formatter: (value) => value.toFixed(1) }
+                    }
+                },
+                plugins: [ChartDataLabels]
             });
 
             // Donut Pass/Fail Chart
@@ -800,8 +808,16 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { ticks: { stepSize: 1 } } }
-                }
+                    scales: { y: { ticks: { stepSize: 1 } } },
+                    plugins: {
+                        datalabels: {
+                            ...BAR_DATALABEL_STYLE,
+                            formatter: (value) => value,
+                            display: (context) => context.dataset.data[context.dataIndex] > 0
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
             });
 
             // Top 3 Highest Scorers Chart — แท่งซ้อน (stacked) แยกสีตามสัดส่วนคะแนนแต่ละฐาน
@@ -825,8 +841,16 @@
                         x: { min: 0, max: 100, stacked: true },
                         y: { stacked: true }
                     },
-                    plugins: { legend: { position: 'bottom' } }
-                }
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            ...BAR_DATALABEL_STYLE,
+                            formatter: (value) => value.toFixed(1),
+                            display: (context) => context.dataset.data[context.dataIndex] > 0
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels]
             });
         }
 
