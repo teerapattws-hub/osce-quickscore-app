@@ -510,6 +510,51 @@
         </div>
     </div>
 
+    <!-- Confirm Score Submission Modal -->
+    <div id="confirm-submit-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto">
+                    <i class="fa-solid fa-circle-question"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg mt-3">ยืนยันการบันทึกคะแนน</h3>
+                <p class="text-xs text-slate-500 mt-1">กรุณาตรวจสอบข้อมูลก่อนบันทึกลง Google Sheet</p>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl border border-slate-100 p-4 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ชื่อ-นามสกุล</span>
+                    <span class="font-semibold text-slate-800" id="confirm-name">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ฐาน 1: หัตถการ</span>
+                    <span class="font-medium text-slate-700" id="confirm-s1">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ฐาน 2: ข้อห้ามและข้อควรระวัง</span>
+                    <span class="font-medium text-slate-700" id="confirm-s2">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ฐาน 3: การให้คำแนะนำ</span>
+                    <span class="font-medium text-slate-700" id="confirm-s3">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">ฐาน 4: การช่วยฟื้นคืนชีพ</span>
+                    <span class="font-medium text-slate-700" id="confirm-s4">-</span>
+                </div>
+                <div class="flex justify-between border-t border-slate-200 pt-2 mt-1">
+                    <span class="text-slate-600 font-semibold">คะแนนรวม</span>
+                    <span class="font-bold text-lg text-amber-700" id="confirm-total">- / 100</span>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 pt-1">
+                <button onclick="closeConfirmSubmitModal()" class="w-1/2 py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-xl">แก้ไขอีกครั้ง</button>
+                <button onclick="confirmSubmitScore()" id="btn-confirm-submit" class="w-1/2 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md">ยืนยันบันทึก</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Message Alert Toast -->
     <div id="toast-msg" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl text-xs font-medium transform transition-all translate-y-20 opacity-0 z-50 flex items-center space-x-2">
         <i class="fa-solid fa-circle-info text-brand-400" id="toast-icon"></i>
@@ -950,6 +995,9 @@
             }
         }
 
+        // เก็บ payload ที่รอยืนยันไว้ชั่วคราว — กันกรรมการมือลั่นกด Enter/ปุ่มบันทึกเพลินแล้วข้อมูลผิดพลาดเข้า Sheet ทันที
+        let pendingSubmitPayload = null;
+
         function handleFormSubmit(e) {
             e.preventDefault();
 
@@ -959,8 +1007,31 @@
             const s3 = parseFloat(document.getElementById('input-s3').value) || 0;
             const s4 = parseFloat(document.getElementById('input-s4').value) || 0;
             const note = document.getElementById('input-note').value.trim();
+            const total = s1 + s2 + s3 + s4;
 
-            const payload = { studentName, s1, s2, s3, s4, note, pin: verifiedPin };
+            pendingSubmitPayload = { studentName, s1, s2, s3, s4, note, pin: verifiedPin };
+
+            document.getElementById('confirm-name').textContent = studentName;
+            document.getElementById('confirm-s1').textContent = `${s1} / 25`;
+            document.getElementById('confirm-s2').textContent = `${s2} / 25`;
+            document.getElementById('confirm-s3').textContent = `${s3} / 25`;
+            document.getElementById('confirm-s4').textContent = `${s4} / 25`;
+            document.getElementById('confirm-total').textContent = `${total} / 100`;
+
+            document.getElementById('confirm-submit-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmSubmitModal() {
+            document.getElementById('confirm-submit-modal').classList.add('hidden');
+            pendingSubmitPayload = null;
+        }
+
+        function confirmSubmitScore() {
+            if (!pendingSubmitPayload) return;
+            const payload = pendingSubmitPayload;
+
+            const confirmBtn = document.getElementById('btn-confirm-submit');
+            confirmBtn.disabled = true;
 
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
@@ -974,11 +1045,15 @@
                     loadTopScorers();
                     resetSubmitButton();
                     clearEntryForm();
+                    confirmBtn.disabled = false;
+                    closeConfirmSubmitModal();
                     showToast(`บันทึกคะแนนของ ${record.studentName} สำเร็จ!`);
                     document.getElementById('input-student-name').focus();
                 })
                 .withFailureHandler(function(error) {
                     resetSubmitButton();
+                    confirmBtn.disabled = false;
+                    closeConfirmSubmitModal();
                     showToast('บันทึกไม่สำเร็จ: ' + (error && error.message ? error.message : error), 'error');
                 })
                 .addRecord(payload);
