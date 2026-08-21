@@ -1141,11 +1141,13 @@
 
             tbody.innerHTML = '';
 
-            const filtered = fullScoreData.filter(item => {
-                const matchSearch = String(item.studentName).toLowerCase().includes(search);
-                const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
-                return matchSearch && matchFilter;
-            });
+            const filtered = fullScoreData
+                .filter(item => {
+                    const matchSearch = String(item.studentName).toLowerCase().includes(search);
+                    const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
+                    return matchSearch && matchFilter;
+                })
+                .sort((a, b) => b.total - a.total); // เรียงคะแนนรวมมากไปน้อย
 
             if (filtered.length === 0) {
                 emptyState.classList.remove('hidden');
