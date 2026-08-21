@@ -378,6 +378,7 @@
                     <table class="w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-xs text-slate-500 uppercase border-b border-slate-100">
                             <tr>
+                                <th class="px-3 py-3 font-semibold text-center">อันดับ</th>
                                 <th class="px-4 py-3 font-semibold">ชื่อ-นามสกุล</th>
                                 <th class="px-3 py-3 font-semibold text-center">ฐาน 1 (25)</th>
                                 <th class="px-3 py-3 font-semibold text-center">ฐาน 2 (25)</th>
@@ -1141,13 +1142,17 @@
 
             tbody.innerHTML = '';
 
-            const filtered = fullScoreData
-                .filter(item => {
-                    const matchSearch = String(item.studentName).toLowerCase().includes(search);
-                    const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
-                    return matchSearch && matchFilter;
-                })
-                .sort((a, b) => b.total - a.total); // เรียงคะแนนรวมมากไปน้อย
+            // จัดอันดับจากคะแนนรวมของทุกคนก่อน (ไม่ขึ้นกับตัวกรอง/คำค้นหา) แล้วค่อยกรองแสดงผล
+            // เพื่อให้เลขอันดับหมายถึงอันดับจริงในกลุ่มทั้งหมด ไม่ใช่แค่อันดับในผลค้นหาที่กรองไว้
+            const ranked = [...fullScoreData]
+                .sort((a, b) => b.total - a.total)
+                .map((item, index) => ({ ...item, rank: index + 1 }));
+
+            const filtered = ranked.filter(item => {
+                const matchSearch = String(item.studentName).toLowerCase().includes(search);
+                const matchFilter = filter === 'all' ? true : filter === 'pass' ? item.passed : !item.passed;
+                return matchSearch && matchFilter;
+            });
 
             if (filtered.length === 0) {
                 emptyState.classList.remove('hidden');
@@ -1165,6 +1170,7 @@
                     : `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800">FAIL</span>`;
 
                 tr.innerHTML = `
+                    <td class="px-3 py-3 text-center font-semibold text-slate-500">${item.rank}</td>
                     <td class="px-4 py-3">
                         <div class="font-medium text-slate-700">${escapeHtml(item.studentName)}</div>
                         ${item.note ? `<div class="text-xs text-slate-400 italic">${escapeHtml(item.note)}</div>` : ''}
